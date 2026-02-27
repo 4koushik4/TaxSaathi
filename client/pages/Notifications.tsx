@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,8 @@ import {
   Zap,
   X,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useUser } from '@/context/UserContext';
 
 interface Notification {
   id: string;
@@ -91,8 +93,177 @@ const NOTIFICATIONS: Notification[] = [
 ];
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const { user, loading: userLoading, isDemoUser } = useUser();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeTab, setActiveTab] = useState('all');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Generate smart notifications from real data across all tables
+  const fetchNotifications = async () => {
+    if (!user?.id) return;
+
+    setIsLoading(true);
+    try {
+      // Fetch real data from accessible tables in parallel
+      const [
+        { data: products },
+        { data: gstTransactions },
+        { data: invoices },
+        { data: expenses },
+      ] = await Promise.all([
+        supabase.from('products').select('*').eq('user_id', user.id),
+        supabase.from('gst_transactions').select('*').eq('user_id', user.id),
+        supabase.from('invoices').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+        supabase.from('expenses').select('*').eq('user_id', user.id).order('expense_date', { ascending: false }).limit(5),
+      ]);
+
+      const generated: Notification[] = [];
+      let idCounter = 1;
+
+      // ── GST Filing Reminder ──
+      const now = new Date();
+      const filingDay = 20;
+      let nextFiling: Date;
+      if (now.getDate() <= filingDay) {
+        nextFiling = new Date(now.getFullYear(), now.getMonth(), filingDay);
+      } else {
+        nextFiling = new Date(now.getFullYear(), now.getMonth() + 1, filingDay);
+      }
+      const daysUntilFiling = Math.ceil((nextFiling.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysUntilFiling <= 7) {
+        generated.push({
+          id: String(idCounter++),
+          type: 'warning',
+          title: 'GST Filing Deadline Approaching',
+          description: `Your GSTR filing is due in ${daysUntilFiling} day${daysUntilFiling !== 1 ? 's' : ''} (${nextFiling.toLocaleDateString('en-IN', { month: 'long', day: 'numeric' })})`,
+          timestamp: new Date(),
+          read: false,
+        });
+      } else {
+        generated.push({
+          id: String(idCounter++),
+          type: 'reminder',
+          title: 'Next GST Filing Date',
+          description: `Your next GSTR filing is due on ${nextFiling.toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+          timestamp: new Date(),
+          read: true,
+        });
+      }
+
+      // ── Low Stock & Out of Stock Alerts ──
+      const lowStockProducts = (products || []).filter(p =>
+        (Number(p.current_stock) || 0) > 0 && (Number(p.current_stock) || 0) < (Number(p.minimum_stock_level) || 5)
+      );
+      const outOfStockProducts = (products || []).filter(p => (Number(p.current_stock) || 0) === 0);
+
+      if (outOfStockProducts.length > 0) {
+        generated.push({
+          id: String(idCounter++),
+          type: 'alert',
+          title: 'Out of Stock Alert',
+          description: `${outOfStockProducts.length} product${outOfStockProducts.length > 1 ? 's are' : ' is'} out of stock: ${outOfStockProducts.slice(0, 3).map(p => p.product_name).join(', ')}${outOfStockProducts.length > 3 ? '...' : ''}`,
+          timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
+          read: false,
+        });
+      }
+
+      if (lowStockProducts.length > 0) {
+        generated.push({
+          id: String(idCounter++),
+          type: 'warning',
+          title: 'Low Stock Warning',
+          description: `${lowStockProducts.length} product${lowStockProducts.length > 1 ? 's are' : ' is'} below minimum stock: ${lowStockProducts.slice(0, 3).map(p => `${p.product_name} (${p.current_stock} left)`).join(', ')}`,
+          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          read: false,
+        });
+      }
+
+      // ── GST Payable Alert ──
+      const salesTxns = (gstTransactions || []).filter(t => t.transaction_type === 'sales');
+      const purchaseTxns = (gstTransactions || []).filter(t => t.transaction_type === 'purchases');
+      const gstCollected = salesTxns.reduce((s, t) => s + (parseFloat(t.cgst || 0)) + (parseFloat(t.sgst || 0)) + (parseFloat(t.igst || 0)), 0);
+      const gstPaid = purchaseTxns.reduce((s, t) => s + (parseFloat(t.cgst || 0)) + (parseFloat(t.sgst || 0)) + (parseFloat(t.igst || 0)), 0);
+      const netGST = gstCollected - gstPaid;
+
+      if (netGST > 0) {
+        generated.push({
+          id: String(idCounter++),
+          type: 'info',
+          title: 'Net GST Payable',
+          description: `You have ₹${netGST.toLocaleString('en-IN', { maximumFractionDigits: 0 })} net GST payable (Collected: ₹${gstCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })} - ITC: ₹${gstPaid.toLocaleString('en-IN', { maximumFractionDigits: 0 })})`,
+          timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
+          read: false,
+        });
+      }
+
+      // ── Recent Invoices ──
+      if (invoices && invoices.length > 0) {
+        const latestInv = invoices[0];
+        generated.push({
+          id: String(idCounter++),
+          type: 'info',
+          title: 'Recent Invoice',
+          description: `Invoice ${latestInv.invoice_number || '#'} — ₹${Number(latestInv.total_amount || 0).toLocaleString('en-IN')} from ${latestInv.vendor_name || 'vendor'}`,
+          timestamp: new Date(latestInv.created_at || Date.now()),
+          read: true,
+        });
+      }
+
+      // ── Inventory Summary ──
+      const totalProducts = (products || []).length;
+      if (totalProducts > 0) {
+        const inventoryValue = (products || []).reduce((s, p) =>
+          s + ((Number(p.current_stock) || 0) * (Number(p.purchase_price) || 0)), 0);
+        generated.push({
+          id: String(idCounter++),
+          type: 'info',
+          title: 'Inventory Summary',
+          description: `${totalProducts} products in inventory worth ₹${inventoryValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          read: true,
+        });
+      }
+
+      // ── Recent Expense ──
+      if (expenses && expenses.length > 0) {
+        const totalExp = expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        generated.push({
+          id: String(idCounter++),
+          type: 'info',
+          title: 'Recent Expenses',
+          description: `${expenses.length} recent expenses totalling ₹${totalExp.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+          timestamp: new Date(expenses[0].expense_date || Date.now()),
+          read: true,
+        });
+      }
+
+      // If no data at all, show a welcome notification
+      if (generated.length <= 1 && totalProducts === 0) {
+        generated.push({
+          id: String(idCounter++),
+          type: 'info',
+          title: 'Welcome to TaxSaathi!',
+          description: 'Start by uploading an invoice or adding products to your inventory to see notifications here.',
+          timestamp: new Date(),
+          read: false,
+        });
+      }
+
+      setNotifications(generated);
+    } catch (error) {
+      console.error('Error generating notifications:', error);
+      setNotifications(isDemoUser ? NOTIFICATIONS : []);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!userLoading && user?.id) {
+      setNotifications(isDemoUser ? NOTIFICATIONS : []);
+      fetchNotifications();
+    }
+  }, [user?.id, userLoading, isDemoUser]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

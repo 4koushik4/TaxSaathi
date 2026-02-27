@@ -2,11 +2,13 @@ import "./global.css";
 
 import { Toaster } from "@/components/ui/toaster";
 import { createRoot } from "react-dom/client";
+import { useEffect } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MainLayout } from "@/components/MainLayout";
+import { UserProvider } from "@/context/UserContext";
 
 // Auth Pages
 import Landing from "./pages/Landing";
@@ -64,11 +66,35 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AppRoutes />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
 
-createRoot(document.getElementById("root")!).render(<App />);
+const AppWithProviders = () => (
+  <UserProvider>
+    <App />
+  </UserProvider>
+);
+
+function AppWrapper() {
+  useEffect(() => {
+    // Use landing page dark theme across the whole app
+    try {
+      document.documentElement.classList.add('dark');
+    } catch (e) {
+      // noop for non-browser environments
+    }
+    return () => {
+      try {
+        document.documentElement.classList.remove('dark');
+      } catch (e) {}
+    };
+  }, []);
+
+  return <AppWithProviders />;
+}
+
+createRoot(document.getElementById("root")!).render(<AppWrapper />);

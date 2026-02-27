@@ -1,4 +1,48 @@
 import { useState } from 'react';
+
+// helper that calls OCR.space API for invoice text extraction
+async function runInvoiceOCR(file: File): Promise<{ invoice: InvoiceData; lineItems: any[]; ocrConfidence: number; extractedText: string }> {
+  try {
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const response = await fetch('/api/ocr/invoice', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        mimeType: file.type,
+        base64Data,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to extract invoice data');
+    }
+
+    return {
+      invoice: data.invoice as InvoiceData,
+      lineItems: Array.isArray(data.lineItems) ? data.lineItems : [],
+      ocrConfidence: data.ocrConfidence || 70,
+      extractedText: data.extractedText || '',
+    };
+  } catch (error) {
+    console.error('OCR error:', error);
+    throw error;
+  }
+}
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +50,9 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle2, AlertCircle, XCircle, Upload, Camera, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import { useUser } from '@/context/UserContext';
 
 interface InvoiceData {
   invoiceNumber: string;
@@ -26,12 +73,16 @@ interface UploadedFile {
   preview?: string;
   processing: boolean;
   extractedData?: InvoiceData;
+  lineItems?: any[];
   ocrConfidence?: number;
+  extractedText?: string;
   validated: boolean;
   validationStatus?: 'valid' | 'warning' | 'error';
 }
 
 export default function InvoiceUpload() {
+  const { user, loading: userLoading } = useUser();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'sales' | 'purchase'>('sales');
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -46,9 +97,9 @@ export default function InvoiceUpload() {
     }
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const newFile: UploadedFile = {
         id: Math.random().toString(),
         name: file.name,
@@ -61,34 +112,38 @@ export default function InvoiceUpload() {
 
       setUploadedFiles((prev) => [...prev, newFile]);
 
-      // Simulate OCR processing
-      setTimeout(() => {
-        const mockData: InvoiceData = {
-          invoiceNumber: 'INV-2024-001',
-          invoiceDate: '2024-07-01',
-          buyerGSTIN: '27ABCDE1234F2Z0',
-          taxableValue: '50000',
-          cgst: '4500',
-          sgst: '4500',
-          igst: '0',
-          total: '59000',
-        };
-
+      // call OCR service
+      try {
+        const result = await runInvoiceOCR(file);
         setUploadedFiles((prev) =>
           prev.map((f) =>
             f.id === newFile.id
               ? {
                   ...f,
                   processing: false,
-                  extractedData: mockData,
-                  ocrConfidence: 94,
+                  extractedData: result.invoice,
+                  lineItems: result.lineItems,
+                  ocrConfidence: result.ocrConfidence,
+                  extractedText: result.extractedText,
                   validated: true,
                   validationStatus: 'valid',
                 }
               : f
           )
         );
-      }, 2000);
+      } catch (err) {
+        console.error('OCR error', err);
+        toast({
+          title: 'OCR failed',
+          description: err instanceof Error ? err.message : 'Failed to extract invoice data',
+          variant: 'destructive',
+        });
+        setUploadedFiles((prev) =>
+          prev.map((f) =>
+            f.id === newFile.id ? { ...f, processing: false, validated: false } : f
+          )
+        );
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -151,11 +206,97 @@ export default function InvoiceUpload() {
     );
   };
 
-  const saveInvoice = (fileId: string) => {
+  const saveInvoice = async (fileId: string) => {
+    if (!user?.id) return;
+
     const file = uploadedFiles.find((f) => f.id === fileId);
-    if (file) {
-      // Simulate save
-      alert(`Invoice ${file.extractedData?.invoiceNumber} saved successfully!`);
+    if (!file || !file.extractedData) return;
+
+    try {
+      const taxable = parseFloat(file.extractedData.taxableValue) || 0;
+      const cgstAmt = parseFloat(file.extractedData.cgst) || 0;
+      const sgstAmt = parseFloat(file.extractedData.sgst) || 0;
+      const igstAmt = parseFloat(file.extractedData.igst) || 0;
+      const gstTotal = cgstAmt + sgstAmt + igstAmt;
+      const totalAmount = taxable + gstTotal;
+
+      // Save invoice header to Supabase
+      const { data, error } = await supabase.from('invoices').insert([
+        {
+          user_id: user.id,
+          invoice_number: file.extractedData.invoiceNumber,
+          invoice_date: file.extractedData.invoiceDate,
+          vendor_gst: file.extractedData.buyerGSTIN,
+          subtotal: taxable,
+          gst_amount: gstTotal,
+          total_amount: totalAmount,
+          status: 'processed',
+          ocr_confidence: file.ocrConfidence || 70,
+        },
+      ]).select();
+
+      if (error) throw error;
+
+      if (data?.[0]?.id) {
+        // Save individual line items from OCR extraction
+        const lineItems = file.lineItems && file.lineItems.length > 0
+          ? file.lineItems.map(item => ({
+              invoice_id: data[0].id,
+              item_name: item.product_name || 'Invoice Item',
+              hsn_code: item.hsn_code || null,
+              quantity: item.quantity || 1,
+              unit_price: item.unit_price || 0,
+              gst_percentage: item.gst_percentage || (taxable > 0 ? ((gstTotal / taxable) * 100) : 0),
+              item_total: (item.unit_price || 0) * (item.quantity || 1),
+            }))
+          : [{
+              invoice_id: data[0].id,
+              item_name: 'Invoice Items',
+              quantity: 1,
+              unit_price: taxable,
+              gst_percentage: taxable > 0 ? ((gstTotal / taxable) * 100) : 0,
+              item_total: totalAmount,
+            }];
+
+        const { error: itemError } = await supabase.from('invoice_items').insert(lineItems);
+
+        if (itemError) throw itemError;
+
+        // Create GST transaction record for GSTR reporting
+        const gstRate = taxable > 0 ? +((gstTotal / taxable) * 100).toFixed(2) : 0;
+        const { error: gstError } = await supabase.from('gst_transactions').insert([
+          {
+            user_id: user.id,
+            transaction_type: file.type === 'sales' ? 'sales' : 'purchases',
+            amount: taxable,
+            gst_rate: gstRate,
+            gst_amount: gstTotal,
+            source_id: data[0].id,
+            cgst: cgstAmt,
+            sgst: sgstAmt,
+            igst: igstAmt,
+            transaction_date: file.extractedData.invoiceDate,
+          },
+        ]);
+
+        if (gstError) {
+          console.warn('GST transaction save failed', gstError);
+        }
+
+        toast({
+          title: 'Success',
+          description: `Invoice ${file.extractedData.invoiceNumber} saved and GST recorded!`,
+        });
+
+        // Remove from UI
+        removeFile(fileId);
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error?.message || 'Failed to save invoice',
+      });
     }
   };
 
@@ -307,7 +448,7 @@ function FilesList({
                 </div>
 
                 {file.extractedData && (
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Invoice Number</Label>
@@ -317,7 +458,7 @@ function FilesList({
                             onDataChange(file.id, 'invoiceNumber', e.target.value)
                           }
                           className="mt-1"
-                          size="sm"
+                          
                         />
                       </div>
                       <div>
@@ -327,7 +468,7 @@ function FilesList({
                           value={file.extractedData.invoiceDate}
                           onChange={(e) => onDataChange(file.id, 'invoiceDate', e.target.value)}
                           className="mt-1"
-                          size="sm"
+                          
                         />
                       </div>
                       <div className="col-span-2">
@@ -336,7 +477,7 @@ function FilesList({
                           value={file.extractedData.buyerGSTIN}
                           onChange={(e) => onDataChange(file.id, 'buyerGSTIN', e.target.value)}
                           className="mt-1"
-                          size="sm"
+                          
                         />
                       </div>
                       <div>
@@ -348,7 +489,7 @@ function FilesList({
                             onDataChange(file.id, 'taxableValue', e.target.value)
                           }
                           className="mt-1"
-                          size="sm"
+                          
                         />
                       </div>
                       <div>
@@ -358,7 +499,7 @@ function FilesList({
                           value={file.extractedData.cgst}
                           onChange={(e) => onDataChange(file.id, 'cgst', e.target.value)}
                           className="mt-1"
-                          size="sm"
+                          
                         />
                       </div>
                       <div>
@@ -368,7 +509,7 @@ function FilesList({
                           value={file.extractedData.sgst}
                           onChange={(e) => onDataChange(file.id, 'sgst', e.target.value)}
                           className="mt-1"
-                          size="sm"
+                          
                         />
                       </div>
                       <div>
@@ -378,7 +519,7 @@ function FilesList({
                           value={file.extractedData.igst}
                           onChange={(e) => onDataChange(file.id, 'igst', e.target.value)}
                           className="mt-1"
-                          size="sm"
+                          
                         />
                       </div>
                       <div>
@@ -388,10 +529,32 @@ function FilesList({
                           value={file.extractedData.total}
                           onChange={(e) => onDataChange(file.id, 'total', e.target.value)}
                           className="mt-1"
-                          size="sm"
+                          
                         />
                       </div>
                     </div>
+
+                    {/* Extracted Line Items */}
+                    {file.lineItems && file.lineItems.length > 0 && (
+                      <div className="mt-4 border rounded-lg p-3">
+                        <p className="text-sm font-medium mb-2">Extracted Line Items ({file.lineItems.length})</p>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {file.lineItems.map((item: any, idx: number) => (
+                            <div key={idx} className="flex items-center justify-between text-sm bg-muted/50 rounded px-3 py-2">
+                              <div className="flex-1">
+                                <span className="font-medium">{item.product_name}</span>
+                                {item.hsn_code && <span className="text-xs text-muted-foreground ml-2">HSN: {item.hsn_code}</span>}
+                              </div>
+                              <div className="flex gap-4 text-muted-foreground">
+                                <span>Qty: {item.quantity}</span>
+                                <span>₹{item.unit_price}</span>
+                                <span className="font-medium text-foreground">₹{(item.quantity * item.unit_price).toFixed(2)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Validation Status */}
                     {file.validationStatus && (
@@ -427,17 +590,17 @@ function FilesList({
                 {!file.processing && (
                   <div className="flex gap-2 mt-4">
                     <Button
-                      size="sm"
+                      
                       onClick={() => onValidate(file.id)}
                       variant="outline"
                     >
                       Validate
                     </Button>
-                    <Button size="sm" onClick={() => onSave(file.id)}>
+                    <Button  onClick={() => onSave(file.id)}>
                       Save Invoice
                     </Button>
                     <Button
-                      size="sm"
+                      
                       variant="ghost"
                       onClick={() => onRemove(file.id)}
                     >

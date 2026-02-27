@@ -16,6 +16,8 @@ import {
   LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useUser } from '@/context/UserContext';
+import { supabase } from '@/lib/supabase';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -34,8 +36,19 @@ export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useUser();
 
-  const handleLogout = () => {
+  const displayName = user?.full_name || user?.email?.split('@')[0] || 'User';
+  const displayEmail = user?.email || '';
+  const initials = displayName
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'U';
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem('token');
     navigate('/');
   };
@@ -48,7 +61,7 @@ export function Sidebar() {
       <div className="fixed top-0 left-0 right-0 z-40 bg-sidebar border-b border-sidebar-border md:hidden h-16 flex items-center px-4 shadow-glow-violet">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Logo" className="w-12 h-12" />
+            
             <span className="font-bold text-sidebar-foreground gradient-text">Tax Saathi</span>
           </div>
           <Button
@@ -74,8 +87,8 @@ export function Sidebar() {
         <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border bg-gradient-to-r from-primary/5 to-accent/5">
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="Logo" className="w-18 h-10" />
-              <span className="font-bold text-sidebar-foreground gradient-text">Tax Saathi</span>
+              
+              <span className="text-2xl font-bold gradient-text"><pre>  Tax Saathi</pre></span>
             </div>
           )}
           <Button
@@ -117,13 +130,13 @@ export function Sidebar() {
         <div className="border-t border-sidebar-border p-4 bg-gradient-to-r from-primary/5 to-accent/5">
             <div className="flex items-center gap-3 px-2">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0 shadow-glow">
-                <span className="text-sm font-bold text-white">JD</span>
+                <span className="text-sm font-bold text-white">{initials}</span>
               </div>
               {!collapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-sidebar-foreground">John Doe</p>
+                  <p className="text-sm font-semibold text-sidebar-foreground">{displayName}</p>
                   <p className="text-xs text-sidebar-foreground opacity-70 truncate">
-                    john@example.com
+                    {displayEmail}
                   </p>
                 </div>
               )}

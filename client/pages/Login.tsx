@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react';
+import { useUser } from '@/context/UserContext';
+import { supabase } from '@/lib/supabase';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -22,6 +24,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { setUser } = useUser();
 
   const {
     register,
@@ -34,19 +37,38 @@ export default function Login() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      // Simulate login API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      localStorage.setItem('token', 'mock-token');
-      toast({
-        title: 'Welcome back!',
-        description: 'You have successfully logged in.',
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
       });
-      navigate('/dashboard');
-    } catch (error) {
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (authData?.user) {
+        // fetch user details from users table
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (!userError && userData) {
+          setUser(userData as any);
+        }
+
+        toast({
+          title: 'Welcome back!',
+          description: 'You have successfully logged in.',
+        });
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Login failed',
-        description: 'Invalid email or password. Please try again.',
+        description: error?.message || 'Invalid email or password. Please try again.',
       });
     } finally {
       setIsLoading(false);

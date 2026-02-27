@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   BarChart,
   Bar,
   XAxis,
@@ -39,22 +54,30 @@ import {
   TrendingUp,
   TrendingDown,
   Package,
+  Loader2,
+  Camera,
+  Upload,
 } from 'lucide-react';
+import { AddProductModal } from '@/components/AddProductModal';
+import { supabase } from '@/lib/supabase';
+import { Product } from '@shared/api';
+import { useUser } from '@/context/UserContext';
 
-interface Product {
+interface ProductData {
   id: string;
-  name: string;
-  sku: string;
-  currentStock: number;
-  minStock: number;
-  avgCost: number;
-  sellingPrice: number;
+  product_name: string;
+  product_id: string;
+  current_stock: number;
+  minimum_stock_level: number;
+  purchase_price: number;
+  selling_price: number;
   profit: number;
-  profitMargin: number;
-  lastSoldDate: string;
+  profit_margin: number;
+  last_sold_date: string;
 }
 
-const MOCK_PRODUCTS: Product[] = [
+// Mock data for demonstration
+const MOCK_PRODUCTS = [
   {
     id: '1',
     name: 'Wireless Headphones',
@@ -130,17 +153,102 @@ const MOCK_PRODUCTS: Product[] = [
 ];
 
 export default function Inventory() {
+  const { user, loading: userLoading, isDemoUser } = useUser();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLowStock, setFilterLowStock] = useState(false);
   const [sortBy, setSortBy] = useState<'profit' | 'stock' | 'name'>('profit');
+  const [products, setProducts] = useState<ProductData[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [addProductOpen, setAddProductOpen] = useState(false);
 
-  const filteredProducts = MOCK_PRODUCTS.filter((product) => {
+  // Edit / Delete / Adjust Stock state
+  const [editProduct, setEditProduct] = useState<ProductData | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    product_name: '',
+    product_id: '',
+    purchase_price: '',
+    selling_price: '',
+    minimum_stock_level: '',
+    category: '',
+    gst_percentage: '',
+    hsn_code: '',
+    barcode: '',
+  });
+
+  const [adjustProduct, setAdjustProduct] = useState<ProductData | null>(null);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustQty, setAdjustQty] = useState('');
+  const [adjustMode, setAdjustMode] = useState<'set' | 'add' | 'subtract'>('set');
+
+  const [deleteProduct, setDeleteProduct] = useState<ProductData | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [barcodeScanning, setBarcodeScanning] = useState(false);
+
+  const toProductData = (item: any): ProductData => {
+    const purchasePrice = Number(item.purchase_price ?? item.avgCost ?? 0);
+    const sellingPrice = Number(item.selling_price ?? item.sellingPrice ?? 0);
+    const profit = Number(item.profit ?? (sellingPrice - purchasePrice));
+    const profitMargin = sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0;
+
+    return {
+      id: item.id,
+      product_name: item.product_name ?? item.name ?? 'Unnamed Product',
+      product_id: item.product_id ?? item.sku ?? 'SKU-NA',
+      current_stock: Number(item.current_stock ?? item.currentStock ?? 0),
+      minimum_stock_level: Number(item.minimum_stock_level ?? item.minStock ?? 0),
+      purchase_price: purchasePrice,
+      selling_price: sellingPrice,
+      profit,
+      profit_margin: Number(item.profit_margin ?? profitMargin),
+      last_sold_date:
+        item.last_sold_date ?? item.lastSoldDate ?? new Date().toISOString().split('T')[0],
+    };
+  };
+
+  // Fetch products from Supabase
+  const fetchProducts = async () => {
+    if (!user?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching products:', error);
+        setProducts(isDemoUser ? MOCK_PRODUCTS.map(toProductData) : []);
+      } else if (data) {
+        const transformedProducts = data.map(toProductData);
+        setProducts(transformedProducts);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setProducts(MOCK_PRODUCTS.map(toProductData));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!userLoading && user?.id) {
+      // reset list based on demo status while fetching
+      setProducts(isDemoUser ? MOCK_PRODUCTS.map(toProductData) : []);
+      fetchProducts();
+    }
+  }, [user?.id, userLoading, isDemoUser]);
+
+  const filteredProducts = products.filter((product) => {
     const matchSearch =
       searchTerm === '' ||
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.includes(searchTerm);
+      product.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.product_id.includes(searchTerm);
 
-    const matchLowStock = !filterLowStock || product.currentStock < product.minStock;
+    const matchLowStock = !filterLowStock || product.current_stock < product.minimum_stock_level;
 
     return matchSearch && matchLowStock;
   }).sort((a, b) => {
@@ -148,34 +256,191 @@ export default function Inventory() {
       case 'profit':
         return b.profit - a.profit;
       case 'stock':
-        return a.currentStock - b.currentStock;
+        return a.current_stock - b.current_stock;
       case 'name':
-        return a.name.localeCompare(b.name);
+        return a.product_name.localeCompare(b.product_name);
       default:
         return 0;
     }
   });
 
-  const totalInventoryValue = MOCK_PRODUCTS.reduce(
-    (sum, p) => sum + p.avgCost * p.currentStock,
+  const totalInventoryValue = products.reduce(
+    (sum, p) => sum + p.purchase_price * p.current_stock,
     0
   );
 
-  const lowStockCount = MOCK_PRODUCTS.filter(
-    (p) => p.currentStock < p.minStock
+  const lowStockCount = products.filter(
+    (p) => p.current_stock < p.minimum_stock_level
   ).length;
 
-  const fastMovingProducts = MOCK_PRODUCTS.filter(
-    (p) => new Date(p.lastSoldDate).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000
+  const fastMovingProducts = products.filter(
+    (p) => new Date(p.last_sold_date).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000
   ).length;
 
-  const deadStockProducts = MOCK_PRODUCTS.filter(
-    (p) => new Date(p.lastSoldDate).getTime() < Date.now() - 60 * 24 * 60 * 60 * 1000
+  const deadStockProducts = products.filter(
+    (p) => new Date(p.last_sold_date).getTime() < Date.now() - 60 * 24 * 60 * 60 * 1000
   );
 
-  const topProductsByProfit = MOCK_PRODUCTS.slice()
+  const topProductsByProfit = products.slice()
     .sort((a, b) => b.profit - a.profit)
     .slice(0, 5);
+
+  // ── Edit handler ──
+  const openEdit = (product: ProductData) => {
+    setEditProduct(product);
+    setEditForm({
+      product_name: product.product_name,
+      product_id: product.product_id,
+      purchase_price: String(product.purchase_price),
+      selling_price: String(product.selling_price),
+      minimum_stock_level: String(product.minimum_stock_level),
+      category: '',
+      gst_percentage: '',
+      hsn_code: '',
+      barcode: '',
+    });
+    // Load extra fields from DB
+    if (!isDemoUser && user?.id) {
+      supabase.from('products').select('category, gst_percentage, hsn_code, barcode').eq('id', product.id).single()
+        .then(({ data }) => {
+          if (data) {
+            setEditForm(prev => ({
+              ...prev,
+              category: data.category || '',
+              gst_percentage: String(data.gst_percentage ?? ''),
+              hsn_code: data.hsn_code || '',
+              barcode: data.barcode || '',
+            }));
+          }
+        });
+    }
+    setEditOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editProduct) return;
+    setActionLoading(true);
+    try {
+      if (!isDemoUser && user?.id) {
+        const { error } = await supabase
+          .from('products')
+          .update({
+            product_name: editForm.product_name,
+            product_id: editForm.product_id,
+            purchase_price: parseFloat(editForm.purchase_price) || 0,
+            selling_price: parseFloat(editForm.selling_price) || 0,
+            minimum_stock_level: parseInt(editForm.minimum_stock_level) || 0,
+            category: editForm.category || 'General',
+            gst_percentage: parseFloat(editForm.gst_percentage) || 0,
+            hsn_code: editForm.hsn_code || '',
+            barcode: editForm.barcode.trim() || null,
+          })
+          .eq('id', editProduct.id)
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Error updating product:', error);
+          alert('Failed to update product: ' + error.message);
+          return;
+        }
+      }
+      // Update local state
+      setProducts(prev => prev.map(p => {
+        if (p.id !== editProduct.id) return p;
+        const purchasePrice = parseFloat(editForm.purchase_price) || 0;
+        const sellingPrice = parseFloat(editForm.selling_price) || 0;
+        const profit = sellingPrice - purchasePrice;
+        return {
+          ...p,
+          product_name: editForm.product_name,
+          product_id: editForm.product_id,
+          purchase_price: purchasePrice,
+          selling_price: sellingPrice,
+          minimum_stock_level: parseInt(editForm.minimum_stock_level) || 0,
+          profit,
+          profit_margin: sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0,
+        };
+      }));
+      setEditOpen(false);
+      setEditProduct(null);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ── Adjust Stock handler ──
+  const openAdjustStock = (product: ProductData) => {
+    setAdjustProduct(product);
+    setAdjustQty(String(product.current_stock));
+    setAdjustMode('set');
+    setAdjustOpen(true);
+  };
+
+  const handleAdjustSave = async () => {
+    if (!adjustProduct) return;
+    const qty = parseInt(adjustQty) || 0;
+    let newStock: number;
+    switch (adjustMode) {
+      case 'add': newStock = adjustProduct.current_stock + qty; break;
+      case 'subtract': newStock = Math.max(0, adjustProduct.current_stock - qty); break;
+      default: newStock = Math.max(0, qty);
+    }
+
+    setActionLoading(true);
+    try {
+      if (!isDemoUser && user?.id) {
+        const { error } = await supabase
+          .from('products')
+          .update({ current_stock: newStock })
+          .eq('id', adjustProduct.id)
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Error adjusting stock:', error);
+          alert('Failed to adjust stock: ' + error.message);
+          return;
+        }
+      }
+      setProducts(prev => prev.map(p =>
+        p.id === adjustProduct.id ? { ...p, current_stock: newStock } : p
+      ));
+      setAdjustOpen(false);
+      setAdjustProduct(null);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ── Delete handler ──
+  const openDelete = (product: ProductData) => {
+    setDeleteProduct(product);
+    setDeleteOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteProduct) return;
+    setActionLoading(true);
+    try {
+      if (!isDemoUser && user?.id) {
+        const { error } = await supabase
+          .from('products')
+          .delete()
+          .eq('id', deleteProduct.id)
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Error deleting product:', error);
+          alert('Failed to delete product: ' + error.message);
+          return;
+        }
+      }
+      setProducts(prev => prev.filter(p => p.id !== deleteProduct.id));
+      setDeleteOpen(false);
+      setDeleteProduct(null);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -185,7 +450,7 @@ export default function Inventory() {
           <h1 className="text-3xl font-bold text-foreground">Inventory</h1>
           <p className="text-muted-foreground mt-2">Manage products, stock levels, and inventory insights.</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setAddProductOpen(true)}>
           <Plus className="w-4 h-4" />
           Add Product
         </Button>
@@ -203,7 +468,7 @@ export default function Inventory() {
             <div className="text-2xl font-bold text-foreground">
               ₹{(totalInventoryValue / 100000).toFixed(2)}L
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{MOCK_PRODUCTS.length} products</p>
+            <p className="text-xs text-muted-foreground mt-1">{products.length} products</p>
           </CardContent>
         </Card>
 
@@ -275,7 +540,7 @@ export default function Inventory() {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={topProductsByProfit}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+              <XAxis dataKey="product_name" angle={-45} textAnchor="end" height={100} />
               <YAxis />
               <Tooltip formatter={(value) => `₹${value}`} />
               <Bar dataKey="profit" fill="hsl(var(--primary))" />
@@ -349,16 +614,16 @@ export default function Inventory() {
               </TableHeader>
               <TableBody>
                 {filteredProducts.map((product) => {
-                  const isLowStock = product.currentStock < product.minStock;
+                  const isLowStock = product.current_stock < product.minimum_stock_level;
                   const isDeadStock =
-                    new Date(product.lastSoldDate).getTime() <
+                    new Date(product.last_sold_date).getTime() <
                     Date.now() - 60 * 24 * 60 * 60 * 1000;
 
                   return (
-                    <TableRow key={product.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableRow key={product.product_id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">{product.product_name}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {product.sku}
+                        {product.product_id}
                       </TableCell>
                       <TableCell className="text-right">
                         <span
@@ -366,22 +631,22 @@ export default function Inventory() {
                             isLowStock ? 'font-semibold text-destructive' : 'font-medium'
                           }
                         >
-                          {product.currentStock}
+                          {product.current_stock}
                         </span>
                         <span className="text-xs text-muted-foreground block">
-                          (Min: {product.minStock})
+                          (Min: {product.minimum_stock_level})
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">₹{product.avgCost}</TableCell>
-                      <TableCell className="text-right">₹{product.sellingPrice}</TableCell>
+                      <TableCell className="text-right">₹{product.purchase_price}</TableCell>
+                      <TableCell className="text-right">₹{product.selling_price}</TableCell>
                       <TableCell className="text-right">
                         <div className="font-medium text-success">₹{product.profit}</div>
                         <div className="text-xs text-muted-foreground">
-                          {product.profitMargin.toFixed(1)}%
+                          {Number(product.profit_margin ?? 0).toFixed(1)}%
                         </div>
                       </TableCell>
                       <TableCell>
-                        {product.currentStock === 0 ? (
+                        {product.current_stock === 0 ? (
                           <Badge className="bg-destructive/10 text-destructive">Out of Stock</Badge>
                         ) : isLowStock ? (
                           <Badge className="bg-warning/10 text-warning flex items-center gap-1">
@@ -405,15 +670,15 @@ export default function Inventory() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEdit(product)}>
                               <Edit2 className="w-4 h-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openAdjustStock(product)}>
                               <Package className="w-4 h-4 mr-2" />
                               Adjust Stock
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem className="text-destructive" onClick={() => openDelete(product)}>
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete
                             </DropdownMenuItem>
@@ -428,6 +693,230 @@ export default function Inventory() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Product Modal */}
+      <AddProductModal 
+        open={addProductOpen} 
+        onOpenChange={setAddProductOpen}
+        onProductAdded={fetchProducts}
+        userId={user?.id || ''}
+      />
+
+      {/* ── Edit Product Dialog ── */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+            <DialogDescription>Update product details below.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label>Product Name</Label>
+              <Input value={editForm.product_name} onChange={e => setEditForm(f => ({ ...f, product_name: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>SKU / Product ID</Label>
+                <Input value={editForm.product_id} onChange={e => setEditForm(f => ({ ...f, product_id: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label>Min Stock Level</Label>
+                <Input type="number" value={editForm.minimum_stock_level} onChange={e => setEditForm(f => ({ ...f, minimum_stock_level: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Purchase Price (₹)</Label>
+                <Input type="number" value={editForm.purchase_price} onChange={e => setEditForm(f => ({ ...f, purchase_price: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label>Selling Price (₹)</Label>
+                <Input type="number" value={editForm.selling_price} onChange={e => setEditForm(f => ({ ...f, selling_price: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>GST %</Label>
+                <Select value={editForm.gst_percentage} onValueChange={v => setEditForm(f => ({ ...f, gst_percentage: v }))}>
+                  <SelectTrigger><SelectValue placeholder="GST %" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">0%</SelectItem>
+                    <SelectItem value="5">5%</SelectItem>
+                    <SelectItem value="12">12%</SelectItem>
+                    <SelectItem value="18">18%</SelectItem>
+                    <SelectItem value="28">28%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>HSN Code</Label>
+                <Input value={editForm.hsn_code} onChange={e => setEditForm(f => ({ ...f, hsn_code: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Category</Label>
+              <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Electronics">Electronics</SelectItem>
+                  <SelectItem value="Clothing">Clothing</SelectItem>
+                  <SelectItem value="Food">Food & Beverages</SelectItem>
+                  <SelectItem value="Accessories">Accessories</SelectItem>
+                  <SelectItem value="Stationery">Stationery</SelectItem>
+                  <SelectItem value="General">General</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Barcode</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter or scan a unique barcode"
+                  value={editForm.barcode}
+                  onChange={e => setEditForm(f => ({ ...f, barcode: e.target.value }))}
+                  className="flex-1"
+                />
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setBarcodeScanning(true);
+                      try {
+                        // Try BarcodeDetector API first
+                        let detected: string | null = null;
+                        if ((window as any).BarcodeDetector) {
+                          try {
+                            const img = new Image();
+                            await new Promise<void>((resolve, reject) => {
+                              img.onload = () => resolve();
+                              img.onerror = reject;
+                              img.src = URL.createObjectURL(file);
+                            });
+                            const bd = new (window as any).BarcodeDetector({ formats: ['ean_13','ean_8','code_128','code_39','qr_code'] });
+                            const results = await bd.detect(img);
+                            if (results.length > 0) detected = results[0].rawValue;
+                          } catch {}
+                        }
+                        // Fall back to Groq Vision API
+                        if (!detected) {
+                          const base64 = await new Promise<string>((resolve, reject) => {
+                            const r = new FileReader();
+                            r.onload = () => resolve((r.result as string).split(',')[1]);
+                            r.onerror = reject;
+                            r.readAsDataURL(file);
+                          });
+                          const resp = await fetch('/api/ocr/barcode', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ fileName: file.name, mimeType: file.type, base64Data: base64 }),
+                          });
+                          if (resp.ok) {
+                            const data = await resp.json();
+                            if (data.code) detected = data.code;
+                          }
+                        }
+                        if (detected) {
+                          setEditForm(f => ({ ...f, barcode: detected! }));
+                        } else {
+                          alert('No barcode detected in this image. Try a clearer photo.');
+                        }
+                      } catch (err) {
+                        console.error('Barcode scan error:', err);
+                        alert('Failed to detect barcode from image.');
+                      } finally {
+                        setBarcodeScanning(false);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <Button type="button" variant="outline" size="icon" asChild disabled={barcodeScanning}>
+                    <span>
+                      {barcodeScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                    </span>
+                  </Button>
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">Type a barcode or tap the camera icon to scan from an image.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditSave} disabled={actionLoading}>
+              {actionLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Adjust Stock Dialog ── */}
+      <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adjust Stock</DialogTitle>
+            <DialogDescription>
+              {adjustProduct?.product_name} — Current stock: <strong>{adjustProduct?.current_stock}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label>Adjustment Mode</Label>
+              <Select value={adjustMode} onValueChange={v => setAdjustMode(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="set">Set exact quantity</SelectItem>
+                  <SelectItem value="add">Add to stock</SelectItem>
+                  <SelectItem value="subtract">Remove from stock</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>{adjustMode === 'set' ? 'New Quantity' : adjustMode === 'add' ? 'Quantity to Add' : 'Quantity to Remove'}</Label>
+              <Input type="number" min="0" value={adjustQty} onChange={e => setAdjustQty(e.target.value)} />
+            </div>
+            {adjustProduct && (
+              <p className="text-sm text-muted-foreground">
+                New stock will be:{' '}
+                <strong>
+                  {adjustMode === 'set'
+                    ? Math.max(0, parseInt(adjustQty) || 0)
+                    : adjustMode === 'add'
+                    ? adjustProduct.current_stock + (parseInt(adjustQty) || 0)
+                    : Math.max(0, adjustProduct.current_stock - (parseInt(adjustQty) || 0))}
+                </strong>
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdjustOpen(false)}>Cancel</Button>
+            <Button onClick={handleAdjustSave} disabled={actionLoading}>
+              {actionLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Update Stock'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{deleteProduct?.product_name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={actionLoading}>
+              {actionLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</> : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

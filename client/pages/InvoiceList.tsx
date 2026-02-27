@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, Download, MoreHorizontal, Eye, Edit2, Trash2, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Search, Download, MoreHorizontal, Eye, Edit2, Trash2, CheckCircle2, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useUser } from '@/context/UserContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface Invoice {
   id: string;
@@ -102,14 +105,63 @@ const MOCK_INVOICES: Invoice[] = [
 ];
 
 export default function InvoiceList() {
+  const { user, loading: userLoading, isDemoUser } = useUser();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'sales' | 'purchase'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'processed' | 'filed'>('all');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const filteredInvoices = MOCK_INVOICES.filter((invoice) => {
+  // Fetch invoices from Supabase
+  useEffect(() => {
+    // reset visible list while new user loads
+    setInvoices(isDemoUser ? MOCK_INVOICES : []);
+
+    const fetchInvoices = async () => {
+      if (!user?.id) return;
+
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('invoices')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('invoice_date', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching invoices:', error);
+          setInvoices(isDemoUser ? MOCK_INVOICES : []);
+        } else if (data) {
+          const transformedInvoices = data.map(inv => ({
+            id: inv.id,
+            type: (inv.type || 'sales') as 'sales' | 'purchase',
+            invoiceNumber: inv.invoice_number,
+            date: inv.invoice_date,
+            gstin: inv.gst_number || '',
+            total: inv.total_amount || 0,
+            status: (inv.status || 'pending') as 'pending' | 'processed' | 'filed',
+            createdAt: inv.created_at,
+          }));
+          setInvoices(transformedInvoices);
+        }
+      } catch (error) {
+        console.error('Error fetching invoices:', error);
+        setInvoices(isDemoUser ? MOCK_INVOICES : []);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (!userLoading && user?.id) {
+      fetchInvoices();
+    }
+  }, [user?.id, userLoading, isDemoUser]);
+
+  const filteredInvoices = invoices.filter((invoice) => {
     const matchSearch =
       searchTerm === '' ||
       invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||

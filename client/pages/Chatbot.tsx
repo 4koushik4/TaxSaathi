@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import {
   Bot,
   Sparkles,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useUser } from '@/context/UserContext';
 
 interface Message {
   id: string;
@@ -54,7 +56,24 @@ const SUGGESTED_PROMPTS = [
   },
 ];
 
+const getDefaultBusinessContext = (): string => `
+Business Data Context:
+- Total Revenue: ₹3,58,000
+- GST Collected: ₹64,440
+- GST Payable: ₹28,320 (after ITC of ₹8,400)
+- Total Purchases: ₹1,88,000
+- Inventory Value: ₹82,500
+- Gross Profit: ₹1,70,000
+- YTD Turnover: ₹38.2L (approaching ₹40L threshold)
+- Low Stock Items: Wireless Headphones (5 units), Phone Case (2 units), Keyboard (3 units)
+- Top Products: Product A (₹45,000), Product B (₹32,000), Product C (₹28,000)
+- GST Filing Due: July 20th
+- Currency: Indian Rupees (₹)
+- Tax System: Indian GST System
+`;
+
 export default function Chatbot() {
+  const { user, loading: userLoading } = useUser();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -67,31 +86,84 @@ export default function Chatbot() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [businessContext, setBusinessContext] = useState<string>('');
+
+  // Fetch business context from Supabase
+  useEffect(() => {
+    const fetchBusinessContext = async () => {
+      if (!user?.id) return;
+
+      try {
+        const [analyticsRes, productsRes, salesRes] = await Promise.all([
+          supabase.from('analytics_summary').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
+          supabase.from('products').select('current_stock, selling_price, purchase_price, minimum_stock_level').eq('user_id', user.id),
+          supabase.from('sales_transactions').select('sales_amount, cost_amount').eq('user_id', user.id),
+        ]);
+
+        let context = `
+Business Data Context (Generated from real data):
+- Currency: Indian Rupees (₹)
+- Tax System: Indian GST System
+`;
+
+        if (analyticsRes.data?.[0]) {
+          const analytics = analyticsRes.data[0];
+          context += `
+- Total Revenue: ₹${parseFloat(analytics.total_revenue || 0).toLocaleString()}
+- GST Collected: ₹${parseFloat(analytics.gst_collected || 0).toLocaleString()}
+- GST Payable: ₹${parseFloat(analytics.gst_payable || 0).toLocaleString()}
+- Total Purchases: ₹${parseFloat(analytics.total_purchases || 0).toLocaleString()}
+- Inventory Value: ₹${parseFloat(analytics.inventory_value || 0).toLocaleString()}
+- Gross Profit: ₹${parseFloat(analytics.gross_profit || 0).toLocaleString()}
+- YTD Turnover: ₹${(parseFloat(analytics.ytd_turnover || 0) / 100000).toFixed(1)}L`;
+        }
+
+        if (productsRes.data) {
+          const lowStockItems = productsRes.data
+            .filter(p => (p.current_stock || 0) < (p.minimum_stock_level || 10))
+            .slice(0, 3);
+          const topProducts = productsRes.data
+            .sort((a, b) => ((b.selling_price || 0) * (b.current_stock || 0)) - ((a.selling_price || 0) * (a.current_stock || 0)))
+            .slice(0, 3);
+
+          if (lowStockItems.length > 0) {
+            context += `\n- Low Stock Items: ${lowStockItems.length} items below minimum`;
+          }
+          if (topProducts.length > 0) {
+            context += `\n- Top Products: Available in inventory`;
+          }
+        }
+
+        if (salesRes.data) {
+          const totalSales = salesRes.data.reduce((sum, t) => sum + (parseFloat(t.sales_amount) || 0), 0);
+          context += `\n- Total Sales (YTD): ₹${totalSales.toLocaleString()}`;
+        }
+
+        context += `\n- GST Filing Due: 20th of every month
+- All amounts are calculated from real business data`;
+
+        setBusinessContext(context);
+      } catch (error) {
+        console.error('Error fetching business context:', error);
+        setBusinessContext(getDefaultBusinessContext());
+      }
+    };
+
+    if (!userLoading && user?.id) {
+      fetchBusinessContext();
+    }
+  }, [user?.id, userLoading]);
 
   const getAIResponse = async (userMessage: string): Promise<string> => {
     try {
-      // Mock business data for context
-      const businessContext = `
-      Business Data Context:
-      - Total Revenue: ₹3,58,000
-      - GST Collected: ₹64,440
-      - GST Payable: ₹28,320 (after ITC of ₹8,400)
-      - Total Purchases: ₹1,88,000
-      - Inventory Value: ₹82,500
-      - Gross Profit: ₹1,70,000
-      - YTD Turnover: ₹38.2L (approaching ₹40L threshold)
-      - Low Stock Items: Wireless Headphones (5 units), Phone Case (2 units), Keyboard (3 units)
-      - Top Products: Product A (₹45,000), Product B (₹32,000), Product C (₹28,000)
-      - GST Filing Due: July 20th
-      - Currency: Indian Rupees (₹)
-      - Tax System: Indian GST System
-      `;
+      // Use real business context or fallback to default
+      const context = businessContext || getDefaultBusinessContext();
       
       const prompt = `
       You are an expert AI tax and business assistant for an Indian business using the Tax Saathi platform. 
       Your role is to provide accurate, helpful, and professional guidance on GST, tax compliance, inventory management, and business insights.
       
-      ${businessContext}
+      ${context}
       
       User Question: "${userMessage}"
       
@@ -207,199 +279,167 @@ export default function Chatbot() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 h-full flex flex-col">
+    <div className="fixed inset-0 bg-gradient-to-b from-background via-background to-background/80 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="text-center space-y-4">
-        <div className="inline-flex items-center gap-4 bg-white border border-border/50 rounded-2xl px-8 py-4 shadow-lg backdrop-blur-sm">
-          <div className="relative">
-            <div className="w-14 h-14 bg-gradient-to-br from-primary via-accent to-primary rounded-full flex items-center justify-center shadow-2xl ring-4 ring-primary/20">
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-inner">
-                <Bot className="w-6 h-6 text-primary" />
+      <div className="flex-shrink-0 border-b border-primary/20 px-6 py-4 bg-gradient-to-r from-primary/5 to-accent/5 backdrop-blur-xl">
+        <div className="max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-3 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border border-primary/30 rounded-2xl px-6 py-3 shadow-lg backdrop-blur-sm hover:shadow-xl hover:border-primary/50 transition-all duration-500">
+            <div className="relative">
+              <div className="w-12 h-12 bg-gradient-to-br from-primary via-accent to-primary rounded-full flex items-center justify-center shadow-xl ring-3 ring-primary/30 hover:ring-primary/60 transition-all duration-500 animate-pulse">
+                <div className="w-9 h-9 bg-gradient-to-br from-background to-background/80 rounded-full flex items-center justify-center shadow-inner">
+                  <Bot className="w-5 h-5 text-primary animate-bounce" />
+                </div>
+              </div>
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-accent via-primary to-accent rounded-full flex items-center justify-center animate-spin shadow-lg">
+                <Sparkles className="w-3 h-3 text-white" />
               </div>
             </div>
-            <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-accent to-primary rounded-full flex items-center justify-center animate-pulse shadow-lg">
-              <Sparkles className="w-3 h-3 text-white" />
-            </div>
-          </div>
-          <div className="text-left">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              AI Tax Assistant
-            </h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Live & Ready</span>
-              
+            <div className="text-left">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                AI Tax Assistant
+              </h1>
+              <div className="flex items-center gap-2 text-xs text-white/70 font-medium">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></div>
+                <span>Live & Ready</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 min-h-0 flex flex-col gap-6">
-        <div className="flex-1 bg-white border border-border/50 rounded-3xl shadow-xl overflow-hidden">
-          <div className="flex items-center justify-between p-6 border-b border-border/50 bg-gradient-to-r from-white to-muted/20">
-            <div className="flex items-center gap-4">
-              <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-base font-semibold text-foreground">Live Chat</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <span className="bg-green-500/20 text-green-700 px-3 py-1 rounded-full text-xs font-medium">Active</span>
-              <span>Secure</span>
-              <span>•</span>
-              <span>Encrypted</span>
-            </div>
-          </div>
-          
-          <div className="p-8">
-            <div className="flex-1 overflow-y-auto space-y-8 max-h-[65vh]">
-              {messages.length === 1 && (
-                <div className="flex items-center justify-center py-16">
-                  <div className="text-center space-y-10">
-                    <div className="relative inline-flex mx-auto">
-                      <div className="w-28 h-28 bg-gradient-to-br from-primary/20 via-accent/20 to-primary/20 rounded-full flex items-center justify-center animate-pulse shadow-xl">
-                        <Lightbulb className="w-14 h-14 text-primary" />
-                      </div>
-                      <div className="absolute -bottom-3 -right-3 w-10 h-10 bg-gradient-to-r from-accent to-primary rounded-full flex items-center justify-center shadow-2xl">
-                        <Sparkles className="w-5 h-5 text-white" />
-                      </div>
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-y-auto px-6 py-8">
+          <div className="max-w-4xl mx-auto space-y-8">
+            {messages.length === 1 && (
+              <div className="flex items-center justify-center h-full py-20">
+                <div className="text-center space-y-12">
+                  <div className="relative inline-flex mx-auto">
+                    <div className="w-32 h-32 bg-gradient-to-br from-primary/30 via-accent/30 to-primary/30 rounded-full flex items-center justify-center animate-pulse shadow-2xl shadow-primary/40">
+                      <Lightbulb className="w-16 h-16 text-primary animate-bounce" />
                     </div>
-                    
-                    <div className="space-y-4">
-                      <h3 className="text-4xl font-bold text-foreground">
-                        How can I help you today?
-                      </h3>
-                      <p className="text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed">
-                        I'm your AI Tax Assistant, ready to help with GST calculations, 
-                        tax compliance, inventory management, and business insights.
-                      </p>
+                    <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-gradient-to-r from-accent to-primary rounded-full flex items-center justify-center shadow-2xl animate-spin">
+                      <Sparkles className="w-6 h-6 text-white" />
                     </div>
                   </div>
-                </div>
-              )}
+                  
+                  <div className="space-y-6">
+                    <h3 className="text-5xl font-bold bg-gradient-to-r from-white via-white/90 to-white bg-clip-text text-transparent">
+                      How can I help you today?
+                    </h3>
+                    <p className="text-2xl text-white/70 max-w-2xl mx-auto leading-relaxed font-medium">
+                      I'm your AI Tax Assistant, ready to help with GST calculations, 
+                      tax compliance, inventory management, and business insights.
+                    </p>
+                  </div>
 
-              {messages.map((message) => (
+                  {/* Suggested Prompts Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-8">
+                    {SUGGESTED_PROMPTS.map((prompt, idx) => {
+                      const Icon = prompt.icon;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => handleSuggestedPrompt(prompt.title)}
+                          className="group p-6 bg-gradient-to-br from-primary/15 to-accent/15 border border-primary/30 rounded-2xl hover:border-primary/70 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/50 hover:-translate-y-1 text-left transform hover:scale-105 active:scale-95 backdrop-blur-sm"
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 bg-gradient-to-br from-primary/30 via-accent/30 to-primary/30 rounded-lg flex items-center justify-center group-hover:from-primary/50 group-hover:via-accent/50 group-hover:to-primary/50 transition-all duration-500 shadow-lg group-hover:shadow-xl group-hover:shadow-primary/50 flex-shrink-0">
+                              <Icon className="w-5 h-5 text-primary group-hover:text-white transition-colors duration-300" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-white/95 text-sm group-hover:text-white transition-colors duration-300">{prompt.title}</p>
+                              <p className="text-xs text-white/60 leading-relaxed group-hover:text-white/80 transition-colors duration-300">{prompt.description}</p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
+              >
                 <div
-                  key={message.id}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`max-w-2xl px-6 py-5 rounded-2xl whitespace-pre-wrap text-base shadow-lg transition-all duration-300 ${
+                    message.type === 'user'
+                      ? 'bg-gradient-to-br from-primary to-accent text-white font-medium shadow-primary/40'
+                      : 'bg-gradient-to-br from-primary/20 to-accent/20 text-white/95 border border-primary/30'
+                  }`}
                 >
-                  <div
-                    className={`max-w-xs md:max-w-md lg:max-w-xl px-8 py-6 rounded-3xl whitespace-pre-wrap text-base shadow-xl ${
-                      message.type === 'user'
-                        ? 'bg-gradient-to-r from-primary to-accent text-white'
-                        : 'bg-gradient-to-r from-white to-muted/50 text-foreground border border-border/50'
-                    }`}
-                  >
-                    {message.content}
-                  </div>
+                  {message.content}
                 </div>
-              ))}
+              </div>
+            ))}
 
-              {loading && (
-                <div className="flex justify-start">
-                  <div className="bg-gradient-to-r from-white to-muted/50 border border-border/50 px-8 py-6 rounded-3xl shadow-xl">
-                    <div className="flex gap-4">
-                      <div className="w-5 h-5 bg-primary rounded-full animate-bounce"></div>
-                      <div className="w-5 h-5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-5 h-5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                    </div>
+            {loading && (
+              <div className="flex justify-start animate-fade-in-up">
+                <div className="bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/30 px-6 py-5 rounded-2xl shadow-lg">
+                  <div className="flex gap-3">
+                    <div className="w-4 h-4 bg-gradient-to-b from-primary to-accent rounded-full animate-bounce shadow-lg shadow-primary/50"></div>
+                    <div className="w-4 h-4 bg-gradient-to-b from-accent to-primary rounded-full animate-bounce shadow-lg shadow-accent/50" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-4 h-4 bg-gradient-to-b from-primary to-accent rounded-full animate-bounce shadow-lg shadow-primary/50" style={{ animationDelay: '0.4s' }}></div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Suggested Prompts - Show only when no message exchange */}
-        {messages.length === 1 && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <p className="text-base font-medium text-muted-foreground">Popular Questions</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {SUGGESTED_PROMPTS.map((prompt, idx) => {
-                const Icon = prompt.icon;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => handleSuggestedPrompt(prompt.title)}
-                    className="group p-8 bg-white border border-border/50 rounded-3xl hover:border-primary/50 transition-all duration-300 hover:shadow-2xl hover:-translate-y-3 text-left transform hover:scale-[1.02] active:scale-[0.98]"
-                  >
-                    <div className="flex items-start gap-6">
-                      <div className="w-14 h-14 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 rounded-2xl flex items-center justify-center group-hover:from-primary/20 group-hover:via-accent/20 group-hover:to-primary/20 transition-all duration-300">
-                        <Icon className="w-7 h-7 text-primary" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-foreground text-xl mb-3">{prompt.title}</p>
-                        <p className="text-base text-muted-foreground leading-relaxed">{prompt.description}</p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Input Area */}
-      <div className="space-y-4">
-        {error && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              <div className="flex-1">
-                <p className="font-medium text-destructive">Connection Error</p>
-                <p className="text-sm text-destructive/80">{error}</p>
+      <div className="flex-shrink-0 border-t border-primary/20 bg-gradient-to-t from-background to-background/50 backdrop-blur-xl px-6 py-6">
+        <div className="max-w-4xl mx-auto space-y-4">
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                <div className="flex-1">
+                  <p className="font-medium text-destructive">Connection Error</p>
+                  <p className="text-sm text-destructive/80">{error}</p>
+                </div>
+                <button 
+                  onClick={() => setError(null)}
+                  className="text-destructive/80 hover:text-destructive transition-colors"
+                >
+                  ×
+                </button>
               </div>
-              <button 
-                onClick={() => setError(null)}
-                className="text-destructive/80 hover:text-destructive transition-colors"
-              >
-                ×
-              </button>
             </div>
-          </div>
-        )}
-        
-        
-
-        <div className="flex gap-6 bg-white border border-border/50 rounded-3xl p-4 shadow-xl backdrop-blur-sm">
-          <div className="flex-1 relative">
-            <Input
-              placeholder="Type your question here..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              disabled={loading}
-              className="w-full border-0 focus:ring-0 focus:border-0 bg-transparent text-foreground placeholder:text-muted-foreground text-lg py-6 px-6"
-            />
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-3 text-sm text-muted-foreground">
-              <span className="bg-primary/10 text-primary px-3 py-1 rounded-full font-medium">Enter</span>
-              <span className="text-border">•</span>
-              <span className="bg-accent/10 text-accent px-3 py-1 rounded-full font-medium">Send</span>
+          )}
+          
+          <div className="flex gap-4 bg-white border border-border/50 rounded-2xl p-4 shadow-2xl backdrop-blur-sm hover:border-primary/30 transition-colors duration-300">
+            <div className="flex-1 relative">
+              <Input
+                placeholder="Ask me about GST, taxes, inventory, profits..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                disabled={loading}
+                className="w-full border-0 focus:ring-0 focus:border-0 bg-transparent text-foreground placeholder:text-muted-foreground/70 text-base py-3 px-0"
+              />
             </div>
+            <Button 
+              onClick={handleSendMessage} 
+              disabled={!input.trim() || loading} 
+              size="lg"
+              className="bg-gradient-to-r from-primary via-accent to-primary hover:from-primary/95 hover:via-accent/95 hover:to-primary/95 text-white px-8 rounded-xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 text-base h-12 flex-shrink-0"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </Button>
           </div>
-          <Button 
-            onClick={handleSendMessage} 
-            disabled={!input.trim() || loading} 
-            size="lg"
-            className="bg-gradient-to-r from-primary via-accent to-primary hover:from-primary/95 hover:via-accent/95 hover:to-primary/95 text-white px-10 rounded-2xl font-bold shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2 active:-translate-y-1 text-lg font-semibold h-16"
-          >
-            {loading ? (
-              <div className="flex items-center gap-4">
-                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span className="text-lg">Thinking...</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <Send className="w-6 h-6" />
-                <span className="text-lg font-bold">Send Message</span>
-              </div>
-            )}
-          </Button>
         </div>
-        
-       
       </div>
     </div>
   );

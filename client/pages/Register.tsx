@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, User, Mail, Lock, Building2, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -40,26 +41,41 @@ export default function Register() {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
-    setIsLoading(true);
-    try {
-      // Simulate registration API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      localStorage.setItem('token', 'mock-token');
-      toast({
-        title: 'Account created successfully!',
-        description: 'Welcome to Tax Saathi. Your account has been created.',
-      });
-      navigate('/dashboard');
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Registration failed',
-        description: 'Something went wrong. Please try again.',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  setIsLoading(true);
+
+  try {
+    const { error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: {
+          name: data.name,
+          business_name: data.businessName,
+          gstin: data.gstin || null,
+        },
+      },
+    });
+
+    if (error) throw error;
+
+    toast({
+      title: "Account created successfully!",
+      description: "Please check your email to confirm your account.",
+    });
+
+    navigate("/login");
+  } catch (error: any) {
+    console.error("register error", error);
+
+    toast({
+      variant: "destructive",
+      title: "Registration failed",
+      description: error?.message || "Something went wrong.",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +32,9 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { Home, Zap, Users, Wifi, Trash2, MoreHorizontal, Plus } from 'lucide-react';
+import { Home, Zap, Users, Wifi, Trash2, MoreHorizontal, Plus, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useUser } from '@/context/UserContext';
 
 interface Expense {
   id: string;
@@ -119,9 +121,55 @@ const categoryIcons: Record<string, any> = {
 };
 
 export default function Expenses() {
-  const [expenses, setExpenses] = useState(MOCK_EXPENSES);
+  const { user, loading: userLoading, isDemoUser } = useUser();
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [selectedMonth, setSelectedMonth] = useState('2024-07');
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch expenses from Supabase
+  const fetchExpenses = async () => {
+    if (!user?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching expenses:', error);
+        setExpenses(isDemoUser ? MOCK_EXPENSES : []);
+      } else if (data) {
+        const transformedExpenses = data.map(item => ({
+          id: item.id,
+          category: (item.category || 'other') as any,
+          description: item.description || 'Expense',
+          amount: parseFloat(item.amount) || 0,
+          date: item.date,
+          recurring: item.is_recurring || false,
+        }));
+        setExpenses(transformedExpenses);
+      }
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+      setExpenses(isDemoUser ? MOCK_EXPENSES : []);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!userLoading && user?.id) {
+      setExpenses(isDemoUser ? MOCK_EXPENSES : []);
+      fetchExpenses();
+    }
+  }, [user?.id, userLoading, isDemoUser]);
 
   const filteredExpenses =
     filterCategory === 'all'

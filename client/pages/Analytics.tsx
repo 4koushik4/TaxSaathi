@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   LineChart,
@@ -16,7 +17,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useUser } from '@/context/UserContext';
 
 const yearlySalesData = [
   { month: 'Jan', sales: 45000, cost: 25000, profit: 20000 },
@@ -58,10 +61,119 @@ const profitMarginData = [
 ];
 
 export default function Analytics() {
+  const { user, loading: userLoading, isDemoUser } = useUser();
+  const [yearlySalesData, setYearlySalesData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch analytics data from Supabase
+  const fetchAnalyticsData = async () => {
+    if (!user?.id) return;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('sales_transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('transaction_date', { ascending: true });
+
+      if (error || !data) {
+        console.error('Error fetching analytics data:', error);
+        if (isDemoUser) {
+          setYearlySalesData([
+            { month: 'Jan', sales: 45000, cost: 25000, profit: 20000 },
+            { month: 'Feb', sales: 52000, cost: 28000, profit: 24000 },
+            { month: 'Mar', sales: 48000, cost: 26000, profit: 22000 },
+            { month: 'Apr', sales: 61000, cost: 35000, profit: 26000 },
+            { month: 'May', sales: 58000, cost: 32000, profit: 26000 },
+            { month: 'Jun', sales: 72000, cost: 42000, profit: 30000 },
+            { month: 'Jul', sales: 65000, cost: 38000, profit: 27000 },
+            { month: 'Aug', sales: 78000, cost: 45000, profit: 33000 },
+            { month: 'Sep', sales: 82000, cost: 48000, profit: 34000 },
+            { month: 'Oct', sales: 88000, cost: 51000, profit: 37000 },
+            { month: 'Nov', sales: 95000, cost: 55000, profit: 40000 },
+            { month: 'Dec', sales: 102000, cost: 60000, profit: 42000 },
+          ]);
+        }
+        return;
+      }
+
+      // Group sales by month
+      const monthlyData: Record<string, { sales: number; cost: number; profit: number }> = {};
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      data.forEach(transaction => {
+        const date = new Date(transaction.transaction_date);
+        const monthIndex = date.getMonth();
+        const monthName = months[monthIndex];
+        
+        const sales = parseFloat(transaction.sales_amount) || 0;
+        const cost = parseFloat(transaction.cost_amount) || 0;
+        const profit = sales - cost;
+
+        if (!monthlyData[monthName]) {
+          monthlyData[monthName] = { sales: 0, cost: 0, profit: 0 };
+        }
+
+        monthlyData[monthName].sales += sales;
+        monthlyData[monthName].cost += cost;
+        monthlyData[monthName].profit += profit;
+      });
+
+      // Convert to array format
+      const analyticsData = months.map(month => ({
+        month,
+        sales: monthlyData[month]?.sales || 0,
+        cost: monthlyData[month]?.cost || 0,
+        profit: monthlyData[month]?.profit || 0,
+      }));
+
+      setYearlySalesData(analyticsData);
+    } catch (error) {
+      console.error('Error processing analytics data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!userLoading && user?.id) {
+      setYearlySalesData(isDemoUser ? [
+        { month: 'Jan', sales: 45000, cost: 25000, profit: 20000 },
+        { month: 'Feb', sales: 52000, cost: 28000, profit: 24000 },
+        { month: 'Mar', sales: 48000, cost: 26000, profit: 22000 },
+        { month: 'Apr', sales: 61000, cost: 35000, profit: 26000 },
+        { month: 'May', sales: 58000, cost: 32000, profit: 26000 },
+        { month: 'Jun', sales: 72000, cost: 42000, profit: 30000 },
+        { month: 'Jul', sales: 65000, cost: 38000, profit: 27000 },
+        { month: 'Aug', sales: 78000, cost: 45000, profit: 33000 },
+        { month: 'Sep', sales: 82000, cost: 48000, profit: 34000 },
+        { month: 'Oct', sales: 88000, cost: 51000, profit: 37000 },
+        { month: 'Nov', sales: 95000, cost: 55000, profit: 40000 },
+        { month: 'Dec', sales: 102000, cost: 60000, profit: 42000 },
+      ] : []);
+      fetchAnalyticsData();
+    }
+  }, [user?.id, userLoading, isDemoUser]);
+
   const totalSales = yearlySalesData.reduce((sum, item) => sum + item.sales, 0);
   const totalCost = yearlySalesData.reduce((sum, item) => sum + item.cost, 0);
   const totalProfit = yearlySalesData.reduce((sum, item) => sum + item.profit, 0);
-  const avgMargin = ((totalProfit / totalSales) * 100).toFixed(1);
+  const avgMargin = totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : '0';
+
+  const categoryData = [
+    { name: 'Electronics', value: 35, sales: 382000 },
+    { name: 'Accessories', value: 28, sales: 306000 },
+    { name: 'Software', value: 22, sales: 241000 },
+    { name: 'Services', value: 15, sales: 164000 },
+  ];
+
+  const COLORS = ['#211DFF', '#2563EB', '#3B82F6', '#60A5FA'];
+
+  const profitMarginData = yearlySalesData.map(item => ({
+    month: item.month,
+    margin: item.sales > 0 ? ((item.profit / item.sales) * 100) : 0,
+  }));
 
   return (
     <div className="p-4 md:p-8 space-y-6 animate-fade-in-up">
@@ -212,7 +324,7 @@ export default function Analytics() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" />
                 <YAxis domain={[35, 50]} />
-                <Tooltip formatter={(value) => `${value.toFixed(1)}%`} />
+                <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
                 <Line
                   type="monotone"
                   dataKey="margin"
