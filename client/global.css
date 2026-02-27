@@ -1,0 +1,235 @@
+/** @import must precede all other statements */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /**
+   * Tailwind CSS theme
+   * tailwind.config.ts expects the following color variables to be expressed as HSL values.
+   * A different format will require also updating the theme in tailwind.config.ts.
+  */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 210 11% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 11% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 11% 15%;
+
+    --primary: 142 68% 45%; /* Emerald Green */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 280 60% 95%; /* Light Violet */
+    --secondary-foreground: 280 40% 20%;
+
+    --muted: 280 15% 95%; /* Very Light Violet */
+    --muted-foreground: 280 20% 40%;
+
+    --accent: 280 60% 55%; /* Violet */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 280 10% 90%;
+    --input: 280 10% 90%;
+    --ring: 142 68% 45%;
+
+    --radius: 0.5rem;
+
+    --success: 142 68% 45%; /* Emerald Green */
+    --warning: 35 100% 50%;
+    --info: 280 60% 55%; /* Violet */
+
+    --sidebar-background: 280 15% 98%;
+    --sidebar-foreground: 280 20% 30%;
+    --sidebar-primary: 142 68% 45%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 280 60% 55%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 280 10% 85%;
+    --sidebar-ring: 142 68% 45%;
+  }
+
+  .dark {
+    --background: 280 20% 12%;
+    --foreground: 280 10% 90%;
+
+    --card: 280 15% 15%;
+    --card-foreground: 280 10% 90%;
+
+    --popover: 280 20% 12%;
+    --popover-foreground: 280 10% 90%;
+
+    --primary: 142 68% 55%; /* Emerald Green */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 280 20% 25%;
+    --secondary-foreground: 280 10% 90%;
+
+    --muted: 280 15% 20%;
+    --muted-foreground: 280 10% 60%;
+
+    --accent: 280 60% 65%; /* Violet */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 280 10% 25%;
+    --input: 280 10% 25%;
+    --ring: 142 68% 55%;
+
+    --success: 142 68% 55%; /* Emerald Green */
+    --warning: 35 100% 50%;
+    --info: 280 60% 65%; /* Violet */
+
+    --sidebar-background: 280 20% 12%;
+    --sidebar-foreground: 280 10% 90%;
+    --sidebar-primary: 142 68% 55%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 280 60% 65%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 280 10% 30%;
+    --sidebar-ring: 142 68% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  pre,
+  code {
+    overflow-x: auto;
+    white-space: pre;
+  }
+}
+
+@layer components {
+  /* Enhanced card styling with subtle gradients */
+  .card {
+    @apply relative overflow-hidden;
+  }
+  
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .card:hover::before {
+    opacity: 1;
+  }
+
+  /* Enhanced button styling */
+  .btn-primary {
+    @apply relative overflow-hidden;
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+    box-shadow: 0 4px 15px hsl(var(--primary) / 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px hsl(var(--primary) / 0.4);
+  }
+
+  .btn-secondary {
+    @apply relative overflow-hidden;
+    background: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary) / 0.8));
+    box-shadow: 0 4px 15px hsl(var(--secondary) / 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px hsl(var(--secondary) / 0.4);
+  }
+
+  /* Sidebar enhancements */
+  .sidebar-item {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  .sidebar-item:hover {
+    @apply bg-gradient-to-r from-transparent via-primary/10 to-transparent;
+  }
+
+  /* Sidebar active state with glowing effect */
+  .sidebar-active {
+    @apply relative bg-gradient-to-r from-primary/20 to-accent/20 border-l-2 border-primary shadow-lg;
+  }
+  
+  .sidebar-active::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at top right, hsl(var(--primary) / 0.3), transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .sidebar-active:hover::after {
+    opacity: 1;
+  }
+
+  /* Enhanced typography */
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Subtle animations */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  /* Enhanced shadows for depth */
+  .shadow-glow {
+    box-shadow: 0 10px 25px hsl(var(--primary) / 0.2), 
+                0 4px 6px hsl(var(--primary) / 0.1);
+  }
+
+  .shadow-glow-violet {
+    box-shadow: 0 10px 25px hsl(var(--accent) / 0.2), 
+                0 4px 6px hsl(var(--accent) / 0.1);
+  }
+}
