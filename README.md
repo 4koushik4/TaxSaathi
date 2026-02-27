@@ -1,8 +1,8 @@
-# TaxSaathi
+# TaxSathi
 
 **Intelligent GST & Inventory Management for Indian Small Businesses**
 
-TaxSaathi is a full-stack web application that helps Indian small businesses manage GST compliance, invoices, inventory, expenses, and business analytics — all from one platform. It features OCR-based invoice scanning, AI-powered barcode detection, real-time dashboards, and automated GST calculations.
+TaxSathi is a full-stack web application that helps Indian small businesses manage GST compliance, invoices, inventory, expenses, and business analytics — all from one platform. It features OCR-based invoice scanning, AI-powered barcode detection, real-time dashboards, and automated GST calculations.
 
 ---
 
@@ -160,8 +160,8 @@ Row Level Security (RLS) is enabled with policies restricting data access to the
 ### Installation
 
 ```bash
-git clone https://github.com/your-username/TaxSaathi.git
-cd TaxSaathi
+git clone https://github.com/your-username/TaxSathi.git
+cd TaxSathi
 pnpm install
 ```
 

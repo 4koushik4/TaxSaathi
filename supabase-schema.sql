@@ -1,5 +1,5 @@
 -- ============================================================================
--- TaxSaathi Application - Complete Database Schema
+-- TaxSathi Application - Complete Database Schema
 -- ============================================================================
 
 -- Enable necessary extensions
@@ -328,7 +328,7 @@ CREATE INDEX idx_analytics_user_id ON analytics_summary(user_id);
 INSERT INTO users (id, email, full_name, is_demo_user, business_name, gst_number, pan_number, phone_number, subscription_status)
 VALUES (
   '00000000-0000-0000-0000-000000000001'::uuid,
-  'demo@taxsaathi.com',
+  'demo@taxsathi.com',
   'Demo User',
   TRUE,
   'Demo Electronics Retail',

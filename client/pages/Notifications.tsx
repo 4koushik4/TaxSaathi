@@ -242,7 +242,7 @@ export default function Notifications() {
         generated.push({
           id: String(idCounter++),
           type: 'info',
-          title: 'Welcome to TaxSaathi!',
+          title: 'Welcome to TaxSathi!',
           description: 'Start by uploading an invoice or adding products to your inventory to see notifications here.',
           timestamp: new Date(),
           read: false,

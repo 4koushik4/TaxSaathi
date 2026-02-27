@@ -1,6 +1,6 @@
 # Inventory Management System
 
-This implementation adds comprehensive inventory management functionality to the TaxSaathi application with Supabase integration.
+This implementation adds comprehensive inventory management functionality to the TaxSathi application with Supabase integration.
 
 ## Features Implemented
 

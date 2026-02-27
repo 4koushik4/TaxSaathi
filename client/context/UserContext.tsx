@@ -69,7 +69,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           // Fallback to hardcoded demo user
           setUser({
             id: 'demo-user-id',
-            email: 'demo@taxsaathi.com',
+            email: 'demo@taxsathi.com',
             full_name: 'Demo User',
             is_demo_user: true,
           });
@@ -79,7 +79,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         // Fallback to hardcoded demo user
         setUser({
           id: 'demo-user-id',
-          email: 'demo@taxsaathi.com',
+          email: 'demo@taxsathi.com',
           full_name: 'Demo User',
           is_demo_user: true,
         });

@@ -95,7 +95,7 @@ export default function Register() {
             </div>
           </div>
           <CardTitle className="text-3xl font-bold text-foreground bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Join Tax Saathi
+            Join Tax Sathi
           </CardTitle>
           <CardDescription className="text-muted-foreground text-lg">
             Create your account to start managing your taxes effortlessly

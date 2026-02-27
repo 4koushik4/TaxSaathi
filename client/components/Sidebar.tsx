@@ -62,7 +62,7 @@ export function Sidebar() {
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
             
-            <span className="font-bold text-sidebar-foreground gradient-text">Tax Saathi</span>
+            <span className="font-bold text-sidebar-foreground gradient-text">Tax Sathi</span>
           </div>
           <Button
             variant="ghost"
@@ -88,7 +88,7 @@ export function Sidebar() {
           {!collapsed && (
             <div className="flex items-center gap-2">
               
-              <span className="text-2xl font-bold gradient-text"><pre>  Tax Saathi</pre></span>
+              <span className="text-2xl font-bold gradient-text"><pre>  Tax Sathi</pre></span>
             </div>
           )}
           <Button

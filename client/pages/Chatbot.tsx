@@ -160,7 +160,7 @@ Business Data Context (Generated from real data):
       const context = businessContext || getDefaultBusinessContext();
       
       const prompt = `
-      You are an expert AI tax and business assistant for an Indian business using the Tax Saathi platform. 
+      You are an expert AI tax and business assistant for an Indian business using the Tax Sathi platform. 
       Your role is to provide accurate, helpful, and professional guidance on GST, tax compliance, inventory management, and business insights.
       
       ${context}

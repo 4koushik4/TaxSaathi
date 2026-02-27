@@ -45,7 +45,7 @@ interface AddProductModalProps {
 async function ensureUserProfileExists(userId: string) {
   const { data: authData } = await supabase.auth.getUser();
   const authUser = authData?.user;
-  const email = authUser?.email || `${userId}@taxsaathi.local`;
+  const email = authUser?.email || `${userId}@taxsathi.local`;
   const fullName =
     (authUser?.user_metadata?.full_name as string) ||
     (authUser?.user_metadata?.name as string) ||

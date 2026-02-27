@@ -93,7 +93,7 @@ export default function Login() {
             </div>
           </div>
           <CardTitle className="text-3xl font-bold text-foreground bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Tax Saathi
+            Tax Sathi
           </CardTitle>
           <CardDescription className="text-muted-foreground text-lg">
             Secure tax management platform
