@@ -1,5 +1,3 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-
 // Lazy-init the Express app so any import-time crash is caught inside the handler
 let app: any;
 let initError: string | null = null;
@@ -12,7 +10,7 @@ try {
   console.error("[Vercel Function] Init error:", err);
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   // Always set JSON content-type so Vercel never returns plain text HTML
   res.setHeader("Content-Type", "application/json");
 

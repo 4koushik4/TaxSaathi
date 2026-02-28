@@ -246,6 +246,7 @@ If no line items are found, return at least one item using the total amount. Alw
 
 const handleInvoiceOCR: express.RequestHandler = async (req, res) => {
   try {
+    console.log("[OCR] ENV KEY present:", !!process.env.OCR_SPACE_API_KEY);
     const apiKey = process.env.OCR_SPACE_API_KEY;
     if (!apiKey) {
       return res.status(500).json({
