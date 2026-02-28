@@ -26,7 +26,15 @@ async function runInvoiceOCR(file: File): Promise<{ invoice: InvoiceData; lineIt
       }),
     });
 
-    const data = await response.json();
+    // Safely parse response - Vercel may return non-JSON on crashes
+    const text = await response.text();
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error('Server returned non-JSON:', text.slice(0, 200));
+      throw new Error(`Server error (${response.status}): ${text.slice(0, 100)}`);
+    }
 
     if (!response.ok) {
       throw new Error(data?.error || 'Failed to extract invoice data');

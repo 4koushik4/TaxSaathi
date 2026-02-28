@@ -818,8 +818,11 @@ export default function Inventory() {
                             body: JSON.stringify({ fileName: file.name, mimeType: file.type, base64Data: base64 }),
                           });
                           if (resp.ok) {
-                            const data = await resp.json();
-                            if (data.code) detected = data.code;
+                            const respText = await resp.text();
+                            try {
+                              const data = JSON.parse(respText);
+                              if (data.code) detected = data.code;
+                            } catch { /* non-JSON response, ignore */ }
                           }
                         }
                         if (detected) {

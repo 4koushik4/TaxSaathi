@@ -250,7 +250,15 @@ function UploadInvoiceForm({ onProductAdded, userId }: { onProductAdded?: () => 
         }),
       });
 
-      const data = await response.json();
+      // Safely parse response - Vercel may return non-JSON on crashes
+      const text = await response.text();
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error('Server returned non-JSON:', text.slice(0, 200));
+        throw new Error(`Server error (${response.status}): ${text.slice(0, 100)}`);
+      }
 
       if (!response.ok) {
         throw new Error(data?.error || 'Failed to process invoice');
@@ -733,12 +741,18 @@ function QrScannerUI({ onProductAdded, onCreateNew, userId }: { onProductAdded?:
             }),
           });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Barcode detection failed');
+          // Safely parse response - Vercel may return non-JSON on crashes
+          const respText = await response.text();
+          let data: any;
+          try {
+            data = JSON.parse(respText);
+          } catch {
+            throw new Error(`Server error (${response.status}): ${respText.slice(0, 100)}`);
           }
 
-          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data?.error || 'Barcode detection failed');
+          }
 
           if (data.code) {
             detectedCode = data.code;

@@ -460,6 +460,15 @@ export function createServer() {
   // Translation route
   app.post("/api/translate", handleTranslate);
 
+  // Global error handler — always return JSON, never HTML
+  app.use((err: any, _req: any, res: any, _next: any) => {
+    console.error("[Express Error]", err?.message || err);
+    if (!res.headersSent) {
+      res.status(err?.status || 500).json({
+        error: err?.message || "Internal server error",
+      });
+    }
+  });
 
   return app;
 }
