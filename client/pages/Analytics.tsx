@@ -17,163 +17,231 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { TrendingUp, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Loader2, BarChart3, IndianRupee, FileText, Receipt } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
 
-const yearlySalesData = [
-  { month: 'Jan', sales: 45000, cost: 25000, profit: 20000 },
-  { month: 'Feb', sales: 52000, cost: 28000, profit: 24000 },
-  { month: 'Mar', sales: 48000, cost: 26000, profit: 22000 },
-  { month: 'Apr', sales: 61000, cost: 35000, profit: 26000 },
-  { month: 'May', sales: 58000, cost: 32000, profit: 26000 },
-  { month: 'Jun', sales: 72000, cost: 42000, profit: 30000 },
-  { month: 'Jul', sales: 65000, cost: 38000, profit: 27000 },
-  { month: 'Aug', sales: 78000, cost: 45000, profit: 33000 },
-  { month: 'Sep', sales: 82000, cost: 48000, profit: 34000 },
-  { month: 'Oct', sales: 88000, cost: 51000, profit: 37000 },
-  { month: 'Nov', sales: 95000, cost: 55000, profit: 40000 },
-  { month: 'Dec', sales: 102000, cost: 60000, profit: 42000 },
-];
+const COLORS = ['#211DFF', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const categoryData = [
-  { name: 'Electronics', value: 35, sales: 382000 },
-  { name: 'Accessories', value: 28, sales: 306000 },
-  { name: 'Software', value: 22, sales: 241000 },
-  { name: 'Services', value: 15, sales: 164000 },
-];
+interface MonthlyData {
+  month: string;
+  sales: number;
+  purchases: number;
+  expenses: number;
+  profit: number;
+}
 
-const COLORS = ['#211DFF', '#2563EB', '#3B82F6', '#60A5FA'];
-
-const profitMarginData = [
-  { month: 'Jan', margin: 44.4 },
-  { month: 'Feb', margin: 46.2 },
-  { month: 'Mar', margin: 45.8 },
-  { month: 'Apr', margin: 42.6 },
-  { month: 'May', margin: 44.8 },
-  { month: 'Jun', margin: 41.7 },
-  { month: 'Jul', margin: 41.5 },
-  { month: 'Aug', margin: 42.3 },
-  { month: 'Sep', margin: 41.5 },
-  { month: 'Oct', margin: 42.0 },
-  { month: 'Nov', margin: 42.1 },
-  { month: 'Dec', margin: 41.2 },
-];
+interface SliceData {
+  name: string;
+  value: number;
+  amount: number;
+}
 
 export default function Analytics() {
-  const { user, loading: userLoading, isDemoUser } = useUser();
-  const [yearlySalesData, setYearlySalesData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, loading: userLoading } = useUser();
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch analytics data from Supabase
-  const fetchAnalyticsData = async () => {
+  // Raw data
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
+
+  // Computed chart data
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [vendorData, setVendorData] = useState<SliceData[]>([]);
+  const [categoryData, setCategoryData] = useState<SliceData[]>([]);
+
+  useEffect(() => {
+    if (!userLoading && user?.id) {
+      fetchAllData();
+    }
+  }, [user?.id, userLoading]);
+
+  const fetchAllData = async () => {
     if (!user?.id) return;
-
     setIsLoading(true);
+
     try {
-      const { data, error } = await supabase
-        .from('sales_transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('transaction_date', { ascending: true });
+      const [invoicesRes, salesRes, expensesRes, productsRes] = await Promise.all([
+        supabase
+          .from('invoices')
+          .select('id, invoice_date, subtotal, gst_amount, total_amount, status, vendor_name')
+          .eq('user_id', user.id)
+          .order('invoice_date', { ascending: true }),
+        supabase
+          .from('sales_transactions')
+          .select('id, sale_date, total_amount, gst_amount, quantity_sold, unit_price, product_id')
+          .eq('user_id', user.id)
+          .order('sale_date', { ascending: true }),
+        supabase
+          .from('expenses')
+          .select('id, category, amount, gst_amount, expense_date')
+          .eq('user_id', user.id)
+          .order('expense_date', { ascending: true }),
+        supabase
+          .from('products')
+          .select('id, product_name, category, selling_price, purchase_price, current_stock')
+          .eq('user_id', user.id),
+      ]);
 
-      if (error || !data) {
-        console.error('Error fetching analytics data:', error);
-        if (isDemoUser) {
-          setYearlySalesData([
-            { month: 'Jan', sales: 45000, cost: 25000, profit: 20000 },
-            { month: 'Feb', sales: 52000, cost: 28000, profit: 24000 },
-            { month: 'Mar', sales: 48000, cost: 26000, profit: 22000 },
-            { month: 'Apr', sales: 61000, cost: 35000, profit: 26000 },
-            { month: 'May', sales: 58000, cost: 32000, profit: 26000 },
-            { month: 'Jun', sales: 72000, cost: 42000, profit: 30000 },
-            { month: 'Jul', sales: 65000, cost: 38000, profit: 27000 },
-            { month: 'Aug', sales: 78000, cost: 45000, profit: 33000 },
-            { month: 'Sep', sales: 82000, cost: 48000, profit: 34000 },
-            { month: 'Oct', sales: 88000, cost: 51000, profit: 37000 },
-            { month: 'Nov', sales: 95000, cost: 55000, profit: 40000 },
-            { month: 'Dec', sales: 102000, cost: 60000, profit: 42000 },
-          ]);
-        }
-        return;
-      }
+      const invoiceData = invoicesRes.data || [];
+      const salesData = salesRes.data || [];
+      const expenseData = expensesRes.data || [];
+      const productData = productsRes.data || [];
 
-      // Group sales by month
-      const monthlyData: Record<string, { sales: number; cost: number; profit: number }> = {};
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      setInvoices(invoiceData);
+      setSales(salesData);
+      setExpenses(expenseData);
 
-      data.forEach(transaction => {
-        const date = new Date(transaction.transaction_date);
-        const monthIndex = date.getMonth();
-        const monthName = months[monthIndex];
-        
-        const sales = parseFloat(transaction.sales_amount) || 0;
-        const cost = parseFloat(transaction.cost_amount) || 0;
-        const profit = sales - cost;
-
-        if (!monthlyData[monthName]) {
-          monthlyData[monthName] = { sales: 0, cost: 0, profit: 0 };
-        }
-
-        monthlyData[monthName].sales += sales;
-        monthlyData[monthName].cost += cost;
-        monthlyData[monthName].profit += profit;
-      });
-
-      // Convert to array format
-      const analyticsData = months.map(month => ({
-        month,
-        sales: monthlyData[month]?.sales || 0,
-        cost: monthlyData[month]?.cost || 0,
-        profit: monthlyData[month]?.profit || 0,
-      }));
-
-      setYearlySalesData(analyticsData);
+      processMonthlyData(invoiceData, salesData, expenseData);
+      processVendorData(invoiceData);
+      processCategoryData(salesData, productData);
     } catch (error) {
-      console.error('Error processing analytics data:', error);
+      console.error('Error fetching analytics data:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!userLoading && user?.id) {
-      setYearlySalesData(isDemoUser ? [
-        { month: 'Jan', sales: 45000, cost: 25000, profit: 20000 },
-        { month: 'Feb', sales: 52000, cost: 28000, profit: 24000 },
-        { month: 'Mar', sales: 48000, cost: 26000, profit: 22000 },
-        { month: 'Apr', sales: 61000, cost: 35000, profit: 26000 },
-        { month: 'May', sales: 58000, cost: 32000, profit: 26000 },
-        { month: 'Jun', sales: 72000, cost: 42000, profit: 30000 },
-        { month: 'Jul', sales: 65000, cost: 38000, profit: 27000 },
-        { month: 'Aug', sales: 78000, cost: 45000, profit: 33000 },
-        { month: 'Sep', sales: 82000, cost: 48000, profit: 34000 },
-        { month: 'Oct', sales: 88000, cost: 51000, profit: 37000 },
-        { month: 'Nov', sales: 95000, cost: 55000, profit: 40000 },
-        { month: 'Dec', sales: 102000, cost: 60000, profit: 42000 },
-      ] : []);
-      fetchAnalyticsData();
-    }
-  }, [user?.id, userLoading, isDemoUser]);
+  /* ---- data processors ---- */
 
-  const totalSales = yearlySalesData.reduce((sum, item) => sum + item.sales, 0);
-  const totalCost = yearlySalesData.reduce((sum, item) => sum + item.cost, 0);
-  const totalProfit = yearlySalesData.reduce((sum, item) => sum + item.profit, 0);
-  const avgMargin = totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : '0';
+  const processMonthlyData = (invoiceData: any[], salesData: any[], expenseData: any[]) => {
+    const monthly: Record<string, { sales: number; purchases: number; expenses: number }> = {};
+    MONTHS.forEach(m => {
+      monthly[m] = { sales: 0, purchases: 0, expenses: 0 };
+    });
 
-  const categoryData = [
-    { name: 'Electronics', value: 35, sales: 382000 },
-    { name: 'Accessories', value: 28, sales: 306000 },
-    { name: 'Software', value: 22, sales: 241000 },
-    { name: 'Services', value: 15, sales: 164000 },
-  ];
+    salesData.forEach(sale => {
+      const idx = new Date(sale.sale_date).getMonth();
+      monthly[MONTHS[idx]].sales += parseFloat(sale.total_amount) || 0;
+    });
 
-  const COLORS = ['#211DFF', '#2563EB', '#3B82F6', '#60A5FA'];
+    invoiceData.forEach(inv => {
+      const idx = new Date(inv.invoice_date).getMonth();
+      monthly[MONTHS[idx]].purchases += parseFloat(inv.total_amount) || 0;
+    });
 
-  const profitMarginData = yearlySalesData.map(item => ({
+    expenseData.forEach(exp => {
+      const idx = new Date(exp.expense_date).getMonth();
+      monthly[MONTHS[idx]].expenses += parseFloat(exp.amount) || 0;
+    });
+
+    setMonthlyData(
+      MONTHS.map(month => ({
+        month,
+        sales: monthly[month].sales,
+        purchases: monthly[month].purchases,
+        expenses: monthly[month].expenses,
+        profit: monthly[month].sales - monthly[month].purchases - monthly[month].expenses,
+      })),
+    );
+  };
+
+  const processVendorData = (invoiceData: any[]) => {
+    const vendorTotals: Record<string, number> = {};
+    invoiceData.forEach(inv => {
+      const vendor = inv.vendor_name || 'Unknown';
+      vendorTotals[vendor] = (vendorTotals[vendor] || 0) + (parseFloat(inv.total_amount) || 0);
+    });
+
+    const totalAmount = Object.values(vendorTotals).reduce((a, b) => a + b, 0);
+    setVendorData(
+      Object.entries(vendorTotals)
+        .map(([name, amount]) => ({
+          name,
+          value: totalAmount > 0 ? parseFloat(((amount / totalAmount) * 100).toFixed(1)) : 0,
+          amount,
+        }))
+        .sort((a, b) => b.amount - a.amount),
+    );
+  };
+
+  const processCategoryData = (salesData: any[], productData: any[]) => {
+    const productMap: Record<string, string> = {};
+    productData.forEach(p => {
+      productMap[p.id] = p.category || 'Uncategorised';
+    });
+
+    const catTotals: Record<string, number> = {};
+    salesData.forEach(sale => {
+      const cat = (sale.product_id && productMap[sale.product_id]) || 'General';
+      catTotals[cat] = (catTotals[cat] || 0) + (parseFloat(sale.total_amount) || 0);
+    });
+
+    const total = Object.values(catTotals).reduce((a, b) => a + b, 0);
+    setCategoryData(
+      Object.entries(catTotals)
+        .map(([name, amount]) => ({
+          name,
+          value: total > 0 ? parseFloat(((amount / total) * 100).toFixed(1)) : 0,
+          amount,
+        }))
+        .sort((a, b) => b.amount - a.amount),
+    );
+  };
+
+  /* ---- computed metrics ---- */
+
+  const totalSales = sales.reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0);
+  const totalPurchases = invoices.reduce((sum, inv) => sum + (parseFloat(inv.total_amount) || 0), 0);
+  const totalExpenseAmt = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  const totalGSTCollected = sales.reduce((sum, s) => sum + (parseFloat(s.gst_amount) || 0), 0);
+  const totalGSTPaid = invoices.reduce((sum, inv) => sum + (parseFloat(inv.gst_amount) || 0), 0);
+  const netProfit = totalSales - totalPurchases - totalExpenseAmt;
+  const profitMargin = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
+
+  const profitMarginData = monthlyData.map(item => ({
     month: item.month,
-    margin: item.sales > 0 ? ((item.profit / item.sales) * 100) : 0,
+    margin: item.sales > 0 ? parseFloat(((item.profit / item.sales) * 100).toFixed(1)) : 0,
   }));
+
+  const nonZeroMargins = profitMarginData.map(d => d.margin).filter(m => m !== 0);
+  const marginMin = nonZeroMargins.length > 0 ? Math.min(...nonZeroMargins) : 0;
+  const marginMax = nonZeroMargins.length > 0 ? Math.max(...nonZeroMargins) : 100;
+  const yDomainLow = Math.floor(marginMin - 10);
+  const yDomainHigh = Math.ceil(marginMax + 10);
+
+  /* ---- format helpers ---- */
+
+  const formatCurrency = (n: number) => {
+    if (Math.abs(n) >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
+    if (Math.abs(n) >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
+    return `₹${n.toFixed(0)}`;
+  };
+
+  /* ---- loading state ---- */
+
+  if (isLoading || userLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Loading analytics...</span>
+      </div>
+    );
+  }
+
+  const hasData = invoices.length > 0 || sales.length > 0 || expenses.length > 0;
+
+  if (!hasData) {
+    return (
+      <div className="p-4 md:p-8 space-y-6 animate-fade-in-up">
+        <div>
+          <h1 className="text-3xl font-bold gradient-text">Analytics</h1>
+          <p className="text-muted-foreground mt-2">Deep insights into your business performance and trends.</p>
+        </div>
+        <Card className="shadow-glow">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <BarChart3 className="h-16 w-16 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">No Data Yet</h2>
+            <p className="text-muted-foreground text-center max-w-md">
+              Start uploading invoices, recording sales, and tracking expenses to see your business analytics here.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 space-y-6 animate-fade-in-up">
@@ -188,16 +256,14 @@ export default function Analytics() {
         <Card className="shadow-glow hover:shadow-glow transition-all duration-300">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <span className="gradient-text">Total Sales (YTD)</span>
+              <span className="gradient-text">Total Sales</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              ₹{(totalSales / 100000).toFixed(2)}L
-            </div>
-            <p className="text-xs text-success mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" />
-              ↑ 28% YoY
+            <div className="text-2xl font-bold text-foreground">{formatCurrency(totalSales)}</div>
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <FileText className="w-3 h-3" />
+              {sales.length} transaction{sales.length !== 1 ? 's' : ''}
             </p>
           </CardContent>
         </Card>
@@ -205,42 +271,52 @@ export default function Analytics() {
         <Card className="shadow-glow-violet hover:shadow-glow-violet transition-all duration-300">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <span className="gradient-text">Total Cost</span>
+              <span className="gradient-text">Total Purchases</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              ₹{(totalCost / 100000).toFixed(2)}L
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">46.6% of sales</p>
+            <div className="text-2xl font-bold text-foreground">{formatCurrency(totalPurchases)}</div>
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <Receipt className="w-3 h-3" />
+              {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}
+            </p>
           </CardContent>
         </Card>
 
         <Card className="shadow-glow hover:shadow-glow transition-all duration-300">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <span className="gradient-text">Total Profit</span>
+              <span className="gradient-text">Net Profit</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">
-              ₹{(totalProfit / 100000).toFixed(2)}L
+            <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+              {formatCurrency(netProfit)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{avgMargin}% margin</p>
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              {profitMargin >= 0 ? (
+                <TrendingUp className="w-3 h-3 text-success" />
+              ) : (
+                <TrendingDown className="w-3 h-3 text-destructive" />
+              )}
+              {profitMargin.toFixed(1)}% margin
+            </p>
           </CardContent>
         </Card>
 
         <Card className="shadow-glow-violet hover:shadow-glow-violet transition-all duration-300">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <span className="gradient-text">Avg Order Value</span>
+              <span className="gradient-text">GST Summary</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">₹{Math.round(totalSales / 450)}</div>
-            <p className="text-xs text-success mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" />
-              ↑ 12% from last year
+            <div className="text-2xl font-bold text-foreground">
+              {formatCurrency(totalGSTCollected - totalGSTPaid)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <IndianRupee className="w-3 h-3" />
+              Collected {formatCurrency(totalGSTCollected)} · Paid {formatCurrency(totalGSTPaid)}
             </p>
           </CardContent>
         </Card>
@@ -248,21 +324,21 @@ export default function Analytics() {
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Yearly Sales Chart */}
+        {/* Sales & Purchases Trend */}
         <Card className="shadow-glow hover:shadow-glow transition-all duration-300">
           <CardHeader>
-            <CardTitle className="gradient-text">Sales & Cost Trend</CardTitle>
+            <CardTitle className="gradient-text">Sales & Purchases Trend</CardTitle>
             <CardDescription>Monthly comparison throughout the year</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={yearlySalesData}>
+              <AreaChart data={monthlyData}>
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
                     <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="colorPurchases" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.8} />
                     <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0} />
                   </linearGradient>
@@ -270,7 +346,7 @@ export default function Analytics() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" />
                 <YAxis />
-                <Tooltip />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Legend />
                 <Area
                   type="monotone"
@@ -282,11 +358,11 @@ export default function Analytics() {
                 />
                 <Area
                   type="monotone"
-                  dataKey="cost"
+                  dataKey="purchases"
                   stroke="hsl(var(--muted-foreground))"
                   fillOpacity={1}
-                  fill="url(#colorCost)"
-                  name="Cost"
+                  fill="url(#colorPurchases)"
+                  name="Purchases"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -297,22 +373,22 @@ export default function Analytics() {
         <Card className="shadow-glow-violet hover:shadow-glow-violet transition-all duration-300">
           <CardHeader>
             <CardTitle className="gradient-text">Profit Trend</CardTitle>
-            <CardDescription>Monthly profit throughout the year</CardDescription>
+            <CardDescription>Monthly profit (sales − purchases − expenses)</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={yearlySalesData}>
+              <BarChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" />
                 <YAxis />
-                <Tooltip />
-                <Bar dataKey="profit" fill="hsl(var(--success))" />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Bar dataKey="profit" fill="hsl(var(--success))" name="Profit" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Profit Margin */}
+        {/* Profit Margin Trend */}
         <Card className="shadow-glow hover:shadow-glow transition-all duration-300">
           <CardHeader>
             <CardTitle className="gradient-text">Profit Margin Trend</CardTitle>
@@ -323,8 +399,8 @@ export default function Analytics() {
               <LineChart data={profitMarginData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" />
-                <YAxis domain={[35, 50]} />
-                <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
+                <YAxis domain={[yDomainLow, yDomainHigh]} />
+                <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
                 <Line
                   type="monotone"
                   dataKey="margin"
@@ -338,70 +414,188 @@ export default function Analytics() {
           </CardContent>
         </Card>
 
-        {/* Category Breakdown */}
+        {/* Vendor / Category Breakdown */}
         <Card className="shadow-glow-violet hover:shadow-glow-violet transition-all duration-300">
           <CardHeader>
-            <CardTitle className="gradient-text">Revenue by Category</CardTitle>
-            <CardDescription>Product category distribution</CardDescription>
+            <CardTitle className="gradient-text">
+              {vendorData.length > 0 ? 'Purchases by Vendor' : 'Sales by Category'}
+            </CardTitle>
+            <CardDescription>
+              {vendorData.length > 0
+                ? 'Invoice distribution across vendors'
+                : 'Revenue distribution by product category'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-              </PieChart>
-            </ResponsiveContainer>
+            {(() => {
+              const chartData = vendorData.length > 0 ? vendorData : categoryData;
+              if (chartData.length === 0) {
+                return (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    No breakdown data available
+                  </div>
+                );
+              }
+              return (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }) => `${name}: ${value}%`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {chartData.map((_entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
 
-      {/* Category Details Table */}
-      <Card className="shadow-glow hover:shadow-glow transition-all duration-300">
-        <CardHeader>
-          <CardTitle className="gradient-text">Category Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 font-medium">Category</th>
-                  <th className="text-right py-3 px-4 font-medium">% of Revenue</th>
-                  <th className="text-right py-3 px-4 font-medium">Total Sales</th>
-                  <th className="text-right py-3 px-4 font-medium">Avg Sale</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categoryData.map((category) => (
-                  <tr key={category.name} className="border-b border-border hover:bg-gradient-to-r hover:from-primary/5 hover:to-accent/5 transition-colors">
-                    <td className="py-3 px-4 font-medium">{category.name}</td>
-                    <td className="text-right py-3 px-4 font-medium">{category.value}%</td>
-                    <td className="text-right py-3 px-4 font-medium">
-                      <span className="gradient-text">₹{(category.sales / 1000).toFixed(0)}K</span>
-                    </td>
-                    <td className="text-right py-3 px-4 text-muted-foreground">
-                      ₹{Math.round(category.sales / 50)}
-                    </td>
+      {/* Vendor Details Table */}
+      {vendorData.length > 0 && (
+        <Card className="shadow-glow hover:shadow-glow transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="gradient-text">Vendor Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 font-medium">Vendor</th>
+                    <th className="text-right py-3 px-4 font-medium">% of Purchases</th>
+                    <th className="text-right py-3 px-4 font-medium">Total Amount</th>
+                    <th className="text-right py-3 px-4 font-medium">Avg Invoice</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                </thead>
+                <tbody>
+                  {vendorData.map(vendor => {
+                    const vendorInvoices = invoices.filter(
+                      inv => (inv.vendor_name || 'Unknown') === vendor.name,
+                    );
+                    const avgVal =
+                      vendorInvoices.length > 0 ? vendor.amount / vendorInvoices.length : 0;
+                    return (
+                      <tr
+                        key={vendor.name}
+                        className="border-b border-border hover:bg-gradient-to-r hover:from-primary/5 hover:to-accent/5 transition-colors"
+                      >
+                        <td className="py-3 px-4 font-medium">{vendor.name}</td>
+                        <td className="text-right py-3 px-4 font-medium">{vendor.value}%</td>
+                        <td className="text-right py-3 px-4 font-medium">
+                          <span className="gradient-text">{formatCurrency(vendor.amount)}</span>
+                        </td>
+                        <td className="text-right py-3 px-4 text-muted-foreground">
+                          {formatCurrency(avgVal)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Category Details Table */}
+      {categoryData.length > 0 && (
+        <Card className="shadow-glow hover:shadow-glow transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="gradient-text">Category Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 font-medium">Category</th>
+                    <th className="text-right py-3 px-4 font-medium">% of Revenue</th>
+                    <th className="text-right py-3 px-4 font-medium">Total Sales</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categoryData.map(category => (
+                    <tr
+                      key={category.name}
+                      className="border-b border-border hover:bg-gradient-to-r hover:from-primary/5 hover:to-accent/5 transition-colors"
+                    >
+                      <td className="py-3 px-4 font-medium">{category.name}</td>
+                      <td className="text-right py-3 px-4 font-medium">{category.value}%</td>
+                      <td className="text-right py-3 px-4 font-medium">
+                        <span className="gradient-text">{formatCurrency(category.amount)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Expenses Breakdown */}
+      {expenses.length > 0 && (
+        <Card className="shadow-glow-violet hover:shadow-glow-violet transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="gradient-text">Expenses by Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 font-medium">Category</th>
+                    <th className="text-right py-3 px-4 font-medium">Total</th>
+                    <th className="text-right py-3 px-4 font-medium">GST Included</th>
+                    <th className="text-right py-3 px-4 font-medium">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const catMap: Record<string, { total: number; gst: number; count: number }> = {};
+                    expenses.forEach(e => {
+                      const cat = e.category || 'Other';
+                      if (!catMap[cat]) catMap[cat] = { total: 0, gst: 0, count: 0 };
+                      catMap[cat].total += parseFloat(e.amount) || 0;
+                      catMap[cat].gst += parseFloat(e.gst_amount) || 0;
+                      catMap[cat].count += 1;
+                    });
+                    return Object.entries(catMap)
+                      .sort(([, a], [, b]) => b.total - a.total)
+                      .map(([cat, data]) => (
+                        <tr
+                          key={cat}
+                          className="border-b border-border hover:bg-gradient-to-r hover:from-primary/5 hover:to-accent/5 transition-colors"
+                        >
+                          <td className="py-3 px-4 font-medium capitalize">{cat}</td>
+                          <td className="text-right py-3 px-4 font-medium">
+                            <span className="gradient-text">{formatCurrency(data.total)}</span>
+                          </td>
+                          <td className="text-right py-3 px-4 text-muted-foreground">
+                            {formatCurrency(data.gst)}
+                          </td>
+                          <td className="text-right py-3 px-4 text-muted-foreground">{data.count}</td>
+                        </tr>
+                      ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
