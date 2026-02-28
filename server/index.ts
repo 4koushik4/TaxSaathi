@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
 import { getProducts, getProductById, createProduct, updateProduct, deleteProduct } from "./routes/products";
+import { handleTranslate } from "./routes/translate";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
@@ -455,6 +456,9 @@ export function createServer() {
   // OCR routes
   app.post("/api/ocr/invoice", handleInvoiceOCR);
   app.post("/api/ocr/barcode", handleBarcodeOCR);
+
+  // Translation route
+  app.post("/api/translate", handleTranslate);
 
 
   return app;

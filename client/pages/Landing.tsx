@@ -19,22 +19,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function Landing() {
   const [email, setEmail] = useState("");
+  const { t } = useLanguage();
 
   const features = [
-    { icon: Shield, title: "Secure & Reliable" },
-    { icon: BarChart3, title: "Smart Analytics" },
-    { icon: Users, title: "Expert Support" },
-    { icon: Zap, title: "Lightning Fast" },
+    { icon: Shield, title: t.landing.secureReliable },
+    { icon: BarChart3, title: t.landing.smartAnalytics },
+    { icon: Users, title: t.landing.expertSupport },
+    { icon: Zap, title: t.landing.lightningFast },
   ];
 
   const stats = [
-    { icon: FileText, value: "10K+", label: "Invoices" },
-    { icon: Package, value: "500+", label: "Clients" },
-    { icon: TrendingUp, value: "95%", label: "Time Saved" },
-    { icon: MessageCircle, value: "24/7", label: "Support" },
+    { icon: FileText, value: "10K+", label: t.landing.invoicesLabel },
+    { icon: Package, value: "500+", label: t.landing.clientsLabel },
+    { icon: TrendingUp, value: "95%", label: t.landing.timeSaved },
+    { icon: MessageCircle, value: "24/7", label: t.landing.supportLabel },
   ];
 
   return (
@@ -57,19 +59,18 @@ export default function Landing() {
 
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600/20 border border-purple-500/30 rounded-full text-sm">
               <Star className="w-4 h-4 text-purple-400" />
-              Trusted by 10,000+ businesses
+              {t.landing.trustedBy}
             </div>
 
             <h1 className="text-5xl md:text-7xl font-extrabold leading-tight">
-              Simplify Your{" "}
+              {t.landing.heroTitle}{" "}
               <span className="bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 bg-clip-text text-transparent animate-pulse">
-                Tax Journey
+                {t.landing.heroHighlight}
               </span>
             </h1>
 
             <p className="text-lg text-gray-400 leading-relaxed max-w-xl">
-              Intelligent GST compliance, automated invoicing, real-time analytics
-              and AI-powered financial insights — built for modern businesses.
+              {t.landing.heroDescription}
             </p>
 
             {/* CTA */}
@@ -77,7 +78,7 @@ export default function Landing() {
               <Link to="/register">
                 <Button className="relative px-8 py-6 text-lg font-semibold bg-gradient-to-r from-purple-600 to-cyan-500 rounded-xl hover:scale-105 transition-all duration-300 hover:shadow-[0_0_30px_rgba(124,58,237,0.8)]">
                   <span className="flex items-center">
-                    Get Started Free
+                    {t.landing.getStartedFree}
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </span>
                 </Button>
@@ -88,7 +89,7 @@ export default function Landing() {
                   variant="outline"
                   className="px-8 py-6 border border-white/20 bg-white/5 backdrop-blur-lg hover:border-purple-500 hover:text-purple-400 transition-all duration-300"
                 >
-                  Sign In
+                  {t.landing.signIn}
                 </Button>
               </Link>
             </div>
@@ -97,15 +98,15 @@ export default function Landing() {
             <div className="flex flex-wrap gap-6 text-sm text-gray-400">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-400" />
-                100% Secure
+                {t.landing.secure}
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-cyan-400" />
-                24/7 Support
+                {t.landing.support247}
               </div>
               <div className="flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-green-400" />
-                Money Back Guarantee
+                {t.landing.moneyBackGuarantee}
               </div>
             </div>
 
@@ -141,7 +142,7 @@ export default function Landing() {
         <div className="mt-32 text-center space-y-12">
 
           <h2 className="text-4xl font-bold">
-            Everything You Need
+            {t.landing.everythingYouNeed}
           </h2>
 
           <div className="grid md:grid-cols-4 gap-8">
@@ -170,11 +171,10 @@ export default function Landing() {
             <CardContent className="p-12 grid md:grid-cols-2 gap-8 items-center">
               <div>
                 <h3 className="text-3xl font-bold mb-4">
-                  Stay Updated with Tax Tips
+                  {t.landing.stayUpdated}
                 </h3>
                 <p className="text-gray-400">
-                  Subscribe for latest GST updates, compliance alerts
-                  and AI-driven business insights.
+                  {t.landing.subscribeDescription}
                 </p>
               </div>
 
@@ -187,14 +187,14 @@ export default function Landing() {
               >
                 <Input
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder={t.landing.enterEmail}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-white/10 border-white/20"
                   required
                 />
                 <Button className="bg-gradient-to-r from-purple-600 to-cyan-500 hover:shadow-[0_0_25px_rgba(124,58,237,0.8)] transition-all duration-300">
-                  Subscribe
+                  {t.landing.subscribe}
                 </Button>
               </form>
             </CardContent>

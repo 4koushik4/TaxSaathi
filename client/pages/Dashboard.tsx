@@ -33,6 +33,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { supabase } from '@/lib/supabase';
 
 const COLORS = ['#211DFF', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD'];
@@ -84,6 +85,7 @@ const emptyMetrics: DashboardMetrics = {
 
 export default function Dashboard() {
   const { user, isDemoUser } = useUser();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<DashboardMetrics>(emptyMetrics);
   const [loading, setLoading] = useState(true);
@@ -273,7 +275,7 @@ export default function Dashboard() {
       <div className="p-4 md:p-8 flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading dashboard...</p>
+          <p className="text-muted-foreground">{t.dashboard.loadingDashboard}</p>
         </div>
       </div>
     );
@@ -284,10 +286,10 @@ export default function Dashboard() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold gradient-text">
-          Welcome back, {user?.full_name || 'User'}
-          {isDemoUser && <span className="text-sm font-normal text-muted-foreground ml-2">(Demo Account)</span>}
+          {t.dashboard.welcomeBack} {user?.full_name || 'User'}
+          {isDemoUser && <span className="text-sm font-normal text-muted-foreground ml-2">{t.dashboard.demoAccount}</span>}
         </h1>
-        <p className="text-muted-foreground mt-2">Your intelligent tax and inventory management platform</p>
+        <p className="text-muted-foreground mt-2">{t.dashboard.subtitle}</p>
       </div>
 
       {/* Summary Cards - Row 1: Financials */}
@@ -296,12 +298,12 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-primary" />
-              <span className="gradient-text">Total Revenue</span>
+              <span className="gradient-text">{t.dashboard.totalRevenue}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{fmt(metrics.totalSales)}</div>
-            <p className="text-xs text-muted-foreground mt-1">{metrics.totalInvoices} invoices</p>
+            <p className="text-xs text-muted-foreground mt-1">{metrics.totalInvoices} {t.dashboard.invoices}</p>
           </CardContent>
         </Card>
 
@@ -309,12 +311,12 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Package className="w-4 h-4 text-accent" />
-              <span className="gradient-text">Total Purchases</span>
+              <span className="gradient-text">{t.dashboard.totalPurchases}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{fmt(metrics.totalPurchases)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Cost of goods</p>
+            <p className="text-xs text-muted-foreground mt-1">{t.dashboard.costOfGoods}</p>
           </CardContent>
         </Card>
 
@@ -322,12 +324,12 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <TrendingDown className="w-4 h-4 text-warning" />
-              <span className="gradient-text">Total Expenses</span>
+              <span className="gradient-text">{t.dashboard.totalExpenses}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{fmt(metrics.totalExpenses)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Operating costs</p>
+            <p className="text-xs text-muted-foreground mt-1">{t.dashboard.operatingCosts}</p>
           </CardContent>
         </Card>
 
@@ -335,7 +337,7 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-success" />
-              <span className="gradient-text">Net Profit</span>
+              <span className="gradient-text">{t.dashboard.netProfit}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -344,7 +346,7 @@ export default function Dashboard() {
             </div>
             <p className="text-xs text-success mt-1 flex items-center gap-1">
               <TrendingUp className="w-3 h-3" />
-              {metrics.profitMargin.toFixed(1)}% margin
+              {metrics.profitMargin.toFixed(1)}% {t.dashboard.margin}
             </p>
           </CardContent>
         </Card>
@@ -356,12 +358,12 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Percent className="w-4 h-4 text-primary" />
-              <span className="gradient-text">GST Collected</span>
+              <span className="gradient-text">{t.dashboard.gstCollected}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{fmt(metrics.gstCollected)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Output tax</p>
+            <p className="text-xs text-muted-foreground mt-1">{t.dashboard.outputTax}</p>
           </CardContent>
         </Card>
 
@@ -369,12 +371,12 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Percent className="w-4 h-4 text-accent" />
-              <span className="gradient-text">ITC (GST Paid)</span>
+              <span className="gradient-text">{t.dashboard.itcGstPaid}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{fmt(metrics.gstPaid)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Input tax credit</p>
+            <p className="text-xs text-muted-foreground mt-1">{t.dashboard.inputTaxCredit}</p>
           </CardContent>
         </Card>
 
@@ -382,12 +384,12 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-warning" />
-              <span className="gradient-text">Net GST Payable</span>
+              <span className="gradient-text">{t.dashboard.netGstPayable}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-warning">{fmt(metrics.gstPayable)}</div>
-            <p className="text-xs text-muted-foreground mt-1">After ITC deduction</p>
+            <p className="text-xs text-muted-foreground mt-1">{t.dashboard.afterItcDeduction}</p>
           </CardContent>
         </Card>
 
@@ -395,13 +397,13 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Package className="w-4 h-4 text-accent" />
-              <span className="gradient-text">Inventory Value</span>
+              <span className="gradient-text">{t.dashboard.inventoryValue}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{fmt(metrics.inventoryValue)}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {metrics.totalProducts} products{metrics.lowStockCount > 0 ? ` · ${metrics.lowStockCount} low stock` : ''}
+              {metrics.totalProducts} {t.dashboard.products}{metrics.lowStockCount > 0 ? ` · ${metrics.lowStockCount} ${t.dashboard.lowStock}` : ''}
             </p>
           </CardContent>
         </Card>
@@ -411,14 +413,14 @@ export default function Dashboard() {
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-warning" />
-          <span className="gradient-text">Alerts & Reminders</span>
+          <span className="gradient-text">{t.dashboard.alertsReminders}</span>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {metrics.gsrFilingDue && (
             <Alert className="border-info bg-gradient-to-r from-info/10 to-transparent">
               <AlertCircle className="h-4 w-4 text-info" />
               <AlertDescription>
-                <strong>GST Filing Due:</strong> Next GSTR filing due on {metrics.gsrFilingDue}
+                <strong>{t.dashboard.gstFilingDue}</strong> {t.dashboard.nextGstrFiling} {metrics.gsrFilingDue}
               </AlertDescription>
             </Alert>
           )}
@@ -426,7 +428,7 @@ export default function Dashboard() {
             <Alert className="border-destructive bg-gradient-to-r from-destructive/10 to-transparent">
               <AlertCircle className="h-4 w-4 text-destructive" />
               <AlertDescription>
-                <strong>Out of Stock:</strong> {metrics.outOfStockCount} products have zero stock
+                <strong>{t.dashboard.outOfStock}</strong> {metrics.outOfStockCount} {t.dashboard.productsZeroStock}
               </AlertDescription>
             </Alert>
           )}
@@ -434,7 +436,7 @@ export default function Dashboard() {
             <Alert className="border-warning bg-gradient-to-r from-warning/10 to-transparent">
               <Zap className="h-4 w-4 text-warning" />
               <AlertDescription>
-                <strong>Low Stock:</strong> {metrics.lowStockCount} products below minimum threshold
+                <strong>{t.dashboard.lowStockAlert}</strong> {metrics.lowStockCount} {t.dashboard.productsBelowThreshold}
               </AlertDescription>
             </Alert>
           )}
@@ -442,7 +444,7 @@ export default function Dashboard() {
             <Alert className="border-warning bg-gradient-to-r from-warning/10 to-transparent">
               <AlertTriangle className="h-4 w-4 text-warning" />
               <AlertDescription>
-                <strong>GST Payable:</strong> {fmt(metrics.gstPayable)} net GST payable this period
+                <strong>{t.dashboard.gstPayable}</strong> {fmt(metrics.gstPayable)} {t.dashboard.netGstPayableThisPeriod}
               </AlertDescription>
             </Alert>
           )}
@@ -454,8 +456,8 @@ export default function Dashboard() {
         {/* Monthly Revenue & Expenses */}
         <Card className="shadow-glow hover:shadow-glow transition-all duration-300">
           <CardHeader>
-            <CardTitle className="gradient-text">Monthly Revenue & Expenses</CardTitle>
-            <CardDescription>Last 6 months trend</CardDescription>
+            <CardTitle className="gradient-text">{t.dashboard.monthlyRevenueExpenses}</CardTitle>
+            <CardDescription>{t.dashboard.last6MonthsTrend}</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -465,9 +467,9 @@ export default function Dashboard() {
                 <YAxis />
                 <Tooltip formatter={(value: number) => fmt(value)} />
                 <Legend />
-                <Line type="monotone" dataKey="sales" stroke="hsl(var(--primary))" strokeWidth={3} name="Sales" />
-                <Line type="monotone" dataKey="purchases" stroke="hsl(var(--muted-foreground))" strokeWidth={2} name="Purchases" />
-                <Line type="monotone" dataKey="expenses" stroke="#f59e0b" strokeWidth={2} name="Expenses" />
+                <Line type="monotone" dataKey="sales" stroke="hsl(var(--primary))" strokeWidth={3} name={t.dashboard.sales} />
+                <Line type="monotone" dataKey="purchases" stroke="hsl(var(--muted-foreground))" strokeWidth={2} name={t.dashboard.purchases} />
+                <Line type="monotone" dataKey="expenses" stroke="#f59e0b" strokeWidth={2} name={t.dashboard.expenses} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -476,8 +478,8 @@ export default function Dashboard() {
         {/* GST Trend Chart */}
         <Card className="shadow-glow-violet hover:shadow-glow-violet transition-all duration-300">
           <CardHeader>
-            <CardTitle className="gradient-text">GST Breakdown Trend</CardTitle>
-            <CardDescription>CGST, SGST, IGST over last 6 months</CardDescription>
+            <CardTitle className="gradient-text">{t.dashboard.gstBreakdownTrend}</CardTitle>
+            <CardDescription>{t.dashboard.cgstSgstIgst6Months}</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -498,8 +500,8 @@ export default function Dashboard() {
         {/* Top Performing Products */}
         <Card className="shadow-glow hover:shadow-glow transition-all duration-300">
           <CardHeader>
-            <CardTitle className="gradient-text">Top Products by Value</CardTitle>
-            <CardDescription>Stock value (selling price x quantity)</CardDescription>
+            <CardTitle className="gradient-text">{t.dashboard.topProductsByValue}</CardTitle>
+            <CardDescription>{t.dashboard.stockValue}</CardDescription>
           </CardHeader>
           <CardContent>
             {metrics.topProducts.length > 0 ? (
@@ -514,7 +516,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                No products in inventory yet
+                {t.dashboard.noProductsYet}
               </div>
             )}
           </CardContent>
@@ -523,8 +525,8 @@ export default function Dashboard() {
         {/* Category Breakdown */}
         <Card className="shadow-glow-violet hover:shadow-glow-violet transition-all duration-300">
           <CardHeader>
-            <CardTitle className="gradient-text">Category Breakdown</CardTitle>
-            <CardDescription>Inventory value by product category</CardDescription>
+            <CardTitle className="gradient-text">{t.dashboard.categoryBreakdown}</CardTitle>
+            <CardDescription>{t.dashboard.inventoryByCategory}</CardDescription>
           </CardHeader>
           <CardContent>
             {metrics.categoryBreakdown.length > 0 ? (
@@ -549,7 +551,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                No category data available
+                {t.dashboard.noCategoryData}
               </div>
             )}
           </CardContent>
@@ -559,8 +561,8 @@ export default function Dashboard() {
       {/* Quick Actions */}
       <Card className="shadow-glow hover:shadow-glow transition-all duration-300">
         <CardHeader>
-          <CardTitle className="gradient-text">Quick Actions</CardTitle>
-          <CardDescription>Quick access to common tax and business tasks</CardDescription>
+            <CardTitle className="gradient-text">{t.dashboard.quickActions}</CardTitle>
+            <CardDescription>{t.dashboard.quickActionsDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -569,28 +571,28 @@ export default function Dashboard() {
               className="btn-primary h-20 flex flex-col gap-2 justify-center hover:scale-105 transition-transform duration-300"
             >
               <Upload className="w-5 h-5" />
-              <span className="text-xs text-center">Upload Invoice</span>
+              <span className="text-xs text-center">{t.dashboard.uploadInvoice}</span>
             </Button>
             <Button
               onClick={() => navigate('/inventory')}
               className="btn-secondary h-20 flex flex-col gap-2 justify-center hover:scale-105 transition-transform duration-300"
             >
               <Package className="w-5 h-5" />
-              <span className="text-xs text-center">Manage Inventory</span>
+              <span className="text-xs text-center">{t.dashboard.manageInventory}</span>
             </Button>
             <Button
               onClick={() => navigate('/gst-reports')}
               className="btn-primary h-20 flex flex-col gap-2 justify-center hover:scale-105 transition-transform duration-300"
             >
               <FileText className="w-5 h-5" />
-              <span className="text-xs text-center">GST Reports</span>
+              <span className="text-xs text-center">{t.dashboard.gstReports}</span>
             </Button>
             <Button
               onClick={() => navigate('/chatbot')}
               className="btn-secondary h-20 flex flex-col gap-2 justify-center hover:scale-105 transition-transform duration-300"
             >
               <MessageSquare className="w-5 h-5" />
-              <span className="text-xs text-center">Tax Chatbot</span>
+              <span className="text-xs text-center">{t.dashboard.taxChatbot}</span>
             </Button>
           </div>
         </CardContent>

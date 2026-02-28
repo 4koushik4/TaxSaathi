@@ -29,6 +29,7 @@ import { Search, Download, MoreHorizontal, Eye, Edit2, Trash2, CheckCircle2, Clo
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Invoice {
   id: string;
@@ -107,6 +108,7 @@ const MOCK_INVOICES: Invoice[] = [
 export default function InvoiceList() {
   const { user, loading: userLoading, isDemoUser } = useUser();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'sales' | 'purchase'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'processed' | 'filed'>('all');
@@ -186,21 +188,21 @@ export default function InvoiceList() {
         return (
           <Badge className="bg-success/10 text-success border-success/20 flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3" />
-            Filed
+            {t.invoiceList.filed}
           </Badge>
         );
       case 'processed':
         return (
           <Badge className="bg-primary/10 text-primary border-primary/20 flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3" />
-            Processed
+            {t.invoiceList.processed}
           </Badge>
         );
       case 'pending':
         return (
           <Badge className="bg-warning/10 text-warning border-warning/20 flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            Pending
+            {t.invoiceList.pending}
           </Badge>
         );
       default:
@@ -226,24 +228,24 @@ export default function InvoiceList() {
     <div className="p-4 md:p-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Invoices</h1>
-        <p className="text-muted-foreground mt-2">Manage and view all your sales and purchase invoices.</p>
+        <h1 className="text-3xl font-bold text-foreground">{t.invoiceList.title}</h1>
+        <p className="text-muted-foreground mt-2">{t.invoiceList.subtitle}</p>
       </div>
 
       {/* Filters Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
+          <CardTitle className="text-lg">{t.invoiceList.filters}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Search */}
             <div>
-              <Label className="text-sm">Search</Label>
+              <Label className="text-sm">{t.common.search}</Label>
               <div className="relative mt-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Invoice no, GSTIN..."
+                  placeholder={t.invoiceList.searchPlaceholder}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -253,38 +255,38 @@ export default function InvoiceList() {
 
             {/* Type */}
             <div>
-              <Label className="text-sm">Type</Label>
+              <Label className="text-sm">{t.invoiceList.type}</Label>
               <Select value={filterType} onValueChange={(val) => setFilterType(val as any)}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="sales">Sales</SelectItem>
-                  <SelectItem value="purchase">Purchase</SelectItem>
+                  <SelectItem value="all">{t.invoiceList.allTypes}</SelectItem>
+                  <SelectItem value="sales">{t.invoiceList.salesType}</SelectItem>
+                  <SelectItem value="purchase">{t.invoiceList.purchaseType}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Status */}
             <div>
-              <Label className="text-sm">Status</Label>
+              <Label className="text-sm">{t.invoiceList.status}</Label>
               <Select value={filterStatus} onValueChange={(val) => setFilterStatus(val as any)}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="processed">Processed</SelectItem>
-                  <SelectItem value="filed">Filed</SelectItem>
+                  <SelectItem value="all">{t.invoiceList.allStatus}</SelectItem>
+                  <SelectItem value="pending">{t.invoiceList.pending}</SelectItem>
+                  <SelectItem value="processed">{t.invoiceList.processed}</SelectItem>
+                  <SelectItem value="filed">{t.invoiceList.filed}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Start Date */}
             <div>
-              <Label className="text-sm">From Date</Label>
+              <Label className="text-sm">{t.invoiceList.fromDate}</Label>
               <Input
                 type="date"
                 value={filterStartDate}
@@ -295,7 +297,7 @@ export default function InvoiceList() {
 
             {/* End Date */}
             <div>
-              <Label className="text-sm">To Date</Label>
+              <Label className="text-sm">{t.invoiceList.toDate}</Label>
               <Input
                 type="date"
                 value={filterEndDate}
@@ -317,7 +319,7 @@ export default function InvoiceList() {
                 setFilterEndDate('');
               }}
             >
-              Clear Filters
+              {t.invoiceList.clearFilters}
             </Button>
           </div>
         </CardContent>
@@ -326,13 +328,13 @@ export default function InvoiceList() {
       {/* Results and Actions */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {filteredInvoices.length} invoices
-          {selectedInvoices.length > 0 && ` • ${selectedInvoices.length} selected`}
+          {t.invoiceList.showingInvoices.replace('{count}', String(filteredInvoices.length))}
+          {selectedInvoices.length > 0 && ` • ${t.invoiceList.selected.replace('{count}', String(selectedInvoices.length))}`}
         </p>
         {selectedInvoices.length > 0 && (
           <Button variant="outline" size="sm" className="gap-2">
             <Download className="w-4 h-4" />
-            Export Selected
+            {t.invoiceList.exportSelected}
           </Button>
         )}
       </div>
@@ -355,12 +357,12 @@ export default function InvoiceList() {
                       className="w-4 h-4 rounded border-border cursor-pointer"
                     />
                   </TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Invoice No</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>GSTIN</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t.invoiceList.type}</TableHead>
+                  <TableHead>{t.invoiceList.invoiceNumber}</TableHead>
+                  <TableHead>{t.invoiceList.date}</TableHead>
+                  <TableHead>{t.invoiceList.gstin}</TableHead>
+                  <TableHead className="text-right">{t.invoiceList.total}</TableHead>
+                  <TableHead>{t.invoiceList.status}</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -370,7 +372,7 @@ export default function InvoiceList() {
                     <TableCell colSpan={8} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <AlertCircle className="w-8 h-8 text-muted-foreground" />
-                        <p className="text-muted-foreground">No invoices found</p>
+                        <p className="text-muted-foreground">{t.invoiceList.noInvoicesFound}</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -392,7 +394,7 @@ export default function InvoiceList() {
                             invoice.type === 'sales' ? 'bg-primary/10 text-primary' : ''
                           }
                         >
-                          {invoice.type === 'sales' ? 'Sales' : 'Purchase'}
+                          {invoice.type === 'sales' ? t.invoiceList.salesType : t.invoiceList.purchaseType}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
@@ -416,19 +418,19 @@ export default function InvoiceList() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem>
                               <Eye className="w-4 h-4 mr-2" />
-                              View Details
+                              {t.invoiceList.viewDetails}
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Edit2 className="w-4 h-4 mr-2" />
-                              Edit
+                              {t.invoiceList.editInvoice}
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Download className="w-4 h-4 mr-2" />
-                              Download
+                              {t.common.download}
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive">
                               <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
+                              {t.invoiceList.deleteInvoice}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

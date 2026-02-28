@@ -62,6 +62,7 @@ import { AddProductModal } from '@/components/AddProductModal';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@shared/api';
 import { useUser } from '@/context/UserContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface ProductData {
   id: string;
@@ -154,6 +155,7 @@ const MOCK_PRODUCTS = [
 
 export default function Inventory() {
   const { user, loading: userLoading, isDemoUser } = useUser();
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLowStock, setFilterLowStock] = useState(false);
   const [sortBy, setSortBy] = useState<'profit' | 'stock' | 'name'>('profit');
@@ -447,12 +449,12 @@ export default function Inventory() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Inventory</h1>
-          <p className="text-muted-foreground mt-2">Manage products, stock levels, and inventory insights.</p>
+          <h1 className="text-3xl font-bold text-foreground">{t.inventory.title}</h1>
+          <p className="text-muted-foreground mt-2">{t.inventory.subtitle}</p>
         </div>
         <Button className="gap-2" onClick={() => setAddProductOpen(true)}>
           <Plus className="w-4 h-4" />
-          Add Product
+          {t.inventory.addProduct}
         </Button>
       </div>
 
@@ -461,21 +463,21 @@ export default function Inventory() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Inventory Value
+              {t.inventory.totalValue}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">
               ₹{(totalInventoryValue / 100000).toFixed(2)}L
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{products.length} products</p>
+            <p className="text-xs text-muted-foreground mt-1">{products.length} {t.dashboard.products}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Low Stock Items
+              {t.inventory.lowStockItems}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -487,7 +489,7 @@ export default function Inventory() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Fast Moving
+              {t.inventory.fastMoving}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -499,7 +501,7 @@ export default function Inventory() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Dead Stock
+              {t.inventory.deadStock}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -533,8 +535,8 @@ export default function Inventory() {
       {/* Top Products by Profit Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Top Products by Profit</CardTitle>
-          <CardDescription>Best performing products this month</CardDescription>
+          <CardTitle>{t.inventory.topProductsByProfit}</CardTitle>
+          <CardDescription>{t.inventory.topProductsByProfit}</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -561,7 +563,7 @@ export default function Inventory() {
               <div className="relative mt-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Product name, SKU..."
+                  placeholder={t.inventory.searchPlaceholder}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -570,15 +572,15 @@ export default function Inventory() {
             </div>
 
             <div className="flex-1">
-              <Label className="text-sm">Sort By</Label>
+              <Label className="text-sm">{t.inventory.sortBy}</Label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="mt-1 flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <option value="profit">Profit (High to Low)</option>
-                <option value="stock">Stock (Low to High)</option>
-                <option value="name">Name (A-Z)</option>
+                <option value="profit">{t.inventory.sortByProfit}</option>
+                <option value="stock">{t.inventory.sortByStock}</option>
+                <option value="name">{t.inventory.sortByName}</option>
               </select>
             </div>
 
@@ -589,7 +591,7 @@ export default function Inventory() {
                 onChange={(e) => setFilterLowStock(e.target.checked)}
                 className="w-4 h-4 rounded"
               />
-              <span className="text-sm font-medium">Low Stock Only</span>
+              <span className="text-sm font-medium">{t.inventory.filterLowStock}</span>
             </label>
           </div>
         </CardContent>
@@ -602,13 +604,13 @@ export default function Inventory() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead className="text-right">Current Stock</TableHead>
-                  <TableHead className="text-right">Avg Cost</TableHead>
-                  <TableHead className="text-right">Selling Price</TableHead>
-                  <TableHead className="text-right">Profit</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t.inventory.productName}</TableHead>
+                  <TableHead>{t.inventory.sku}</TableHead>
+                  <TableHead className="text-right">{t.inventory.currentStock}</TableHead>
+                  <TableHead className="text-right">{t.inventory.purchasePrice}</TableHead>
+                  <TableHead className="text-right">{t.inventory.sellingPrice}</TableHead>
+                  <TableHead className="text-right">{t.inventory.profit}</TableHead>
+                  <TableHead>{t.common.status}</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -647,14 +649,14 @@ export default function Inventory() {
                       </TableCell>
                       <TableCell>
                         {product.current_stock === 0 ? (
-                          <Badge className="bg-destructive/10 text-destructive">Out of Stock</Badge>
+                          <Badge className="bg-destructive/10 text-destructive">{t.inventory.outOfStockBadge}</Badge>
                         ) : isLowStock ? (
                           <Badge className="bg-warning/10 text-warning flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3" />
-                            Low Stock
+                            {t.inventory.lowStockBadge}
                           </Badge>
                         ) : isDeadStock ? (
-                          <Badge className="bg-destructive/10 text-destructive">Dead Stock</Badge>
+                          <Badge className="bg-destructive/10 text-destructive">{t.inventory.deadStock}</Badge>
                         ) : (
                           <Badge className="bg-success/10 text-success flex items-center gap-1">
                             <TrendingUp className="w-3 h-3" />
@@ -672,15 +674,15 @@ export default function Inventory() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEdit(product)}>
                               <Edit2 className="w-4 h-4 mr-2" />
-                              Edit
+                              {t.common.edit}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openAdjustStock(product)}>
                               <Package className="w-4 h-4 mr-2" />
-                              Adjust Stock
+                              {t.inventory.adjustStock}
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive" onClick={() => openDelete(product)}>
                               <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
+                              {t.common.delete}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -706,39 +708,39 @@ export default function Inventory() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Product</DialogTitle>
-            <DialogDescription>Update product details below.</DialogDescription>
+            <DialogTitle>{t.inventory.editProduct}</DialogTitle>
+            <DialogDescription>{t.inventory.editProduct}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1">
-              <Label>Product Name</Label>
+              <Label>{t.inventory.productName}</Label>
               <Input value={editForm.product_name} onChange={e => setEditForm(f => ({ ...f, product_name: e.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>SKU / Product ID</Label>
+                <Label>{t.addProduct.sku}</Label>
                 <Input value={editForm.product_id} onChange={e => setEditForm(f => ({ ...f, product_id: e.target.value }))} />
               </div>
               <div className="space-y-1">
-                <Label>Min Stock Level</Label>
+                <Label>{t.inventory.minimumStockLevel}</Label>
                 <Input type="number" value={editForm.minimum_stock_level} onChange={e => setEditForm(f => ({ ...f, minimum_stock_level: e.target.value }))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Purchase Price (₹)</Label>
+                <Label>{t.addProduct.purchasePrice}</Label>
                 <Input type="number" value={editForm.purchase_price} onChange={e => setEditForm(f => ({ ...f, purchase_price: e.target.value }))} />
               </div>
               <div className="space-y-1">
-                <Label>Selling Price (₹)</Label>
+                <Label>{t.addProduct.sellingPrice}</Label>
                 <Input type="number" value={editForm.selling_price} onChange={e => setEditForm(f => ({ ...f, selling_price: e.target.value }))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>GST %</Label>
+                <Label>{t.inventory.gstPercentage}</Label>
                 <Select value={editForm.gst_percentage} onValueChange={v => setEditForm(f => ({ ...f, gst_percentage: v }))}>
-                  <SelectTrigger><SelectValue placeholder="GST %" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t.inventory.gstPercentage} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="0">0%</SelectItem>
                     <SelectItem value="5">5%</SelectItem>
@@ -749,14 +751,14 @@ export default function Inventory() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>HSN Code</Label>
+                <Label>{t.inventory.hsnCode}</Label>
                 <Input value={editForm.hsn_code} onChange={e => setEditForm(f => ({ ...f, hsn_code: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Category</Label>
+              <Label>{t.common.category}</Label>
               <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t.addProduct.categoryPlaceholder} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Electronics">Electronics</SelectItem>
                   <SelectItem value="Clothing">Clothing</SelectItem>
@@ -768,7 +770,7 @@ export default function Inventory() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Barcode</Label>
+              <Label>{t.inventory.barcode}</Label>
               <div className="flex gap-2">
                 <Input
                   placeholder="Enter or scan a unique barcode"
@@ -845,7 +847,7 @@ export default function Inventory() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>{t.common.cancel}</Button>
             <Button onClick={handleEditSave} disabled={actionLoading}>
               {actionLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save Changes'}
             </Button>
@@ -857,7 +859,7 @@ export default function Inventory() {
       <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Adjust Stock</DialogTitle>
+            <DialogTitle>{t.inventory.stockAdjustment}</DialogTitle>
             <DialogDescription>
               {adjustProduct?.product_name} — Current stock: <strong>{adjustProduct?.current_stock}</strong>
             </DialogDescription>
@@ -868,9 +870,9 @@ export default function Inventory() {
               <Select value={adjustMode} onValueChange={v => setAdjustMode(v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="set">Set exact quantity</SelectItem>
-                  <SelectItem value="add">Add to stock</SelectItem>
-                  <SelectItem value="subtract">Remove from stock</SelectItem>
+                  <SelectItem value="set">{t.inventory.setStock}</SelectItem>
+                  <SelectItem value="add">{t.inventory.addStock}</SelectItem>
+                  <SelectItem value="subtract">{t.inventory.removeStock}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -892,7 +894,7 @@ export default function Inventory() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAdjustOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAdjustOpen(false)}>{t.common.cancel}</Button>
             <Button onClick={handleAdjustSave} disabled={actionLoading}>
               {actionLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Update Stock'}
             </Button>
@@ -904,15 +906,15 @@ export default function Inventory() {
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Delete Product</DialogTitle>
+            <DialogTitle>{t.inventory.deleteProduct}</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete <strong>{deleteProduct?.product_name}</strong>? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>{t.common.cancel}</Button>
             <Button variant="destructive" onClick={handleDeleteConfirm} disabled={actionLoading}>
-              {actionLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</> : 'Delete'}
+              {actionLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</> : t.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

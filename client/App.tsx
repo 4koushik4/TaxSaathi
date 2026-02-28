@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MainLayout } from "@/components/MainLayout";
 import { UserProvider } from "@/context/UserContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 // Auth Pages
 import Landing from "./pages/Landing";
@@ -74,9 +75,11 @@ const App = () => (
 );
 
 const AppWithProviders = () => (
-  <UserProvider>
-    <App />
-  </UserProvider>
+  <LanguageProvider>
+    <UserProvider>
+      <App />
+    </UserProvider>
+  </LanguageProvider>
 );
 
 function AppWrapper() {

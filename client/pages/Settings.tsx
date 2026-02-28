@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { AlertTriangle, CheckCircle2, Lock, Bell } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
+import { LanguageSelector } from '@/components/LanguageSelector';
 
 export default function Settings() {
   const [businessName, setBusinessName] = useState('ABC Business Ltd.');
@@ -26,6 +28,7 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
+  const { t } = useLanguage();
 
   const handleSaveBusinessSettings = () => {
     setSaveMessage('success');
@@ -34,7 +37,7 @@ export default function Settings() {
 
   const handleChangePassword = () => {
     if (newPassword !== confirmPassword) {
-      alert('Passwords do not match');
+      alert(t.settings.passwordsDoNotMatch);
       return;
     }
     setSaveMessage('password');
@@ -45,35 +48,36 @@ export default function Settings() {
     <div className="p-4 md:p-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground mt-2">Manage your business settings and preferences.</p>
+        <h1 className="text-3xl font-bold text-foreground">{t.settings.title}</h1>
+        <p className="text-muted-foreground mt-2">{t.settings.subtitle}</p>
       </div>
 
       <Tabs defaultValue="business" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="business">Business</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
+        <TabsList className="grid w-full max-w-lg grid-cols-4">
+          <TabsTrigger value="business">{t.settings.businessTab}</TabsTrigger>
+          <TabsTrigger value="preferences">{t.settings.preferencesTab}</TabsTrigger>
+          <TabsTrigger value="account">{t.settings.accountTab}</TabsTrigger>
+          <TabsTrigger value="language">{t.settings.languageTab}</TabsTrigger>
         </TabsList>
 
         {/* Business Settings */}
         <TabsContent value="business" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Business Information</CardTitle>
-              <CardDescription>Update your business details and GST settings</CardDescription>
+              <CardTitle>{t.settings.businessInfo}</CardTitle>
+              <CardDescription>{t.settings.businessInfoDesc}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {saveMessage === 'success' && (
                 <Alert className="border-success bg-success/5">
                   <CheckCircle2 className="h-4 w-4 text-success" />
-                  <AlertDescription>Business settings updated successfully!</AlertDescription>
+                  <AlertDescription>{t.settings.savedSuccess}</AlertDescription>
                 </Alert>
               )}
 
               <div>
                 <Label htmlFor="businessName" className="text-sm font-medium">
-                  Business Name
+                  {t.settings.businessName}
                 </Label>
                 <Input
                   id="businessName"
@@ -85,7 +89,7 @@ export default function Settings() {
 
               <div>
                 <Label htmlFor="ownerName" className="text-sm font-medium">
-                  Owner Name
+                  {t.settings.ownerName}
                 </Label>
                 <Input
                   id="ownerName"
@@ -97,7 +101,7 @@ export default function Settings() {
 
               <div>
                 <Label htmlFor="gstin" className="text-sm font-medium">
-                  GSTIN
+                  {t.settings.gstin}
                 </Label>
                 <Input
                   id="gstin"
@@ -107,26 +111,26 @@ export default function Settings() {
                   maxLength={15}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Your GSTIN is verified and cannot be changed. Contact support if you need to update it.
+                  {t.settings.gstinNote}
                 </p>
               </div>
 
               <div>
                 <Label htmlFor="filingType" className="text-sm font-medium">
-                  GST Filing Type
+                  {t.settings.gstFilingType}
                 </Label>
                 <Select value={filingType} onValueChange={setFilingType}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="monthly">Monthly (GSTR-1, GSTR-2, GSTR-3B)</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="monthly">{t.settings.monthly}</SelectItem>
+                    <SelectItem value="quarterly">{t.settings.quarterly}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <Button onClick={handleSaveBusinessSettings}>Save Changes</Button>
+              <Button onClick={handleSaveBusinessSettings}>{t.settings.saveChanges}</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -135,13 +139,13 @@ export default function Settings() {
         <TabsContent value="preferences" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Inventory Preferences</CardTitle>
-              <CardDescription>Configure inventory and stock management settings</CardDescription>
+              <CardTitle>{t.settings.inventoryPrefs}</CardTitle>
+              <CardDescription>{t.settings.inventoryPrefsDesc}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
                 <Label htmlFor="lowStockThreshold" className="text-sm font-medium">
-                  Low Stock Alert Threshold
+                  {t.settings.lowStockThreshold}
                 </Label>
                 <div className="flex gap-2 mt-1">
                   <Input
@@ -151,21 +155,21 @@ export default function Settings() {
                     onChange={(e) => setLowStockThreshold(e.target.value)}
                     min="1"
                   />
-                  <span className="flex items-center text-muted-foreground">units</span>
+                  <span className="flex items-center text-muted-foreground">{t.settings.units}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Get alerts when product stock falls below this threshold
+                  {t.settings.lowStockNote}
                 </p>
               </div>
 
-              <Button>Save Inventory Settings</Button>
+              <Button>{t.settings.saveInventory}</Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Notification Settings</CardTitle>
-              <CardDescription>Manage how you receive notifications</CardDescription>
+              <CardTitle>{t.settings.notificationSettings}</CardTitle>
+              <CardDescription>{t.settings.notificationSettingsDesc}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <label className="flex items-center gap-3 cursor-pointer p-3 border border-border rounded-lg hover:bg-muted/50">
@@ -176,9 +180,9 @@ export default function Settings() {
                   className="w-4 h-4 rounded"
                 />
                 <div>
-                  <p className="font-medium text-sm">Enable Notifications</p>
+                  <p className="font-medium text-sm">{t.settings.enableNotifications}</p>
                   <p className="text-xs text-muted-foreground">
-                    Receive browser notifications for important alerts
+                    {t.settings.enableNotificationsDesc}
                   </p>
                 </div>
               </label>
@@ -191,15 +195,15 @@ export default function Settings() {
                   className="w-4 h-4 rounded"
                 />
                 <div>
-                  <p className="font-medium text-sm">Email Alerts</p>
+                  <p className="font-medium text-sm">{t.settings.emailAlerts}</p>
                   <p className="text-xs text-muted-foreground">
-                    Get email notifications for GST deadlines and stock alerts
+                    {t.settings.emailAlertsDesc}
                   </p>
                 </div>
               </label>
 
-              <Button onClick={() => alert('Notification settings updated!')}>
-                Save Notification Preferences
+              <Button onClick={() => alert(t.settings.notificationUpdated)}>
+                {t.settings.saveNotificationPrefs}
               </Button>
             </CardContent>
           </Card>
@@ -211,21 +215,21 @@ export default function Settings() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Lock className="w-5 h-5" />
-                Change Password
+                {t.settings.changePassword}
               </CardTitle>
-              <CardDescription>Update your account password</CardDescription>
+              <CardDescription>{t.settings.changePasswordDesc}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {saveMessage === 'password' && (
                 <Alert className="border-success bg-success/5">
                   <CheckCircle2 className="h-4 w-4 text-success" />
-                  <AlertDescription>Password changed successfully!</AlertDescription>
+                  <AlertDescription>{t.settings.passwordChanged}</AlertDescription>
                 </Alert>
               )}
 
               <div>
                 <Label htmlFor="currentPassword" className="text-sm font-medium">
-                  Current Password
+                  {t.settings.currentPassword}
                 </Label>
                 <Input
                   id="currentPassword"
@@ -238,7 +242,7 @@ export default function Settings() {
 
               <div>
                 <Label htmlFor="newPassword" className="text-sm font-medium">
-                  New Password
+                  {t.settings.newPassword}
                 </Label>
                 <Input
                   id="newPassword"
@@ -251,7 +255,7 @@ export default function Settings() {
 
               <div>
                 <Label htmlFor="confirmPassword" className="text-sm font-medium">
-                  Confirm Password
+                  {t.settings.confirmNewPassword}
                 </Label>
                 <Input
                   id="confirmPassword"
@@ -262,7 +266,7 @@ export default function Settings() {
                 />
               </div>
 
-              <Button onClick={handleChangePassword}>Update Password</Button>
+              <Button onClick={handleChangePassword}>{t.settings.updatePassword}</Button>
             </CardContent>
           </Card>
 
@@ -270,24 +274,29 @@ export default function Settings() {
             <CardHeader>
               <CardTitle className="text-destructive flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5" />
-                Danger Zone
+                {t.settings.dangerZone}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <p className="text-sm font-medium text-foreground mb-2">Delete Account</p>
+                <p className="text-sm font-medium text-foreground mb-2">{t.settings.deleteAccount}</p>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Once you delete your account, there is no going back. Please be certain.
+                  {t.settings.deleteAccountDesc}
                 </p>
-                <Button variant="destructive">Delete My Account</Button>
+                <Button variant="destructive">{t.settings.deleteMyAccount}</Button>
               </div>
 
               <div className="border-t border-destructive/20 pt-4">
-                <p className="text-sm font-medium text-foreground mb-2">Logout</p>
-                <Button variant="outline">Logout from All Devices</Button>
+                <p className="text-sm font-medium text-foreground mb-2">{t.settings.logout}</p>
+                <Button variant="outline">{t.settings.logoutAll}</Button>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Language Settings */}
+        <TabsContent value="language" className="space-y-6">
+          <LanguageSelector />
         </TabsContent>
       </Tabs>
     </div>

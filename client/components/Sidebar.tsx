@@ -17,18 +17,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/context/UserContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { supabase } from '@/lib/supabase';
 
-const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Upload Invoice', icon: FileUp, href: '/upload' },
-  { label: 'Invoices', icon: FileText, href: '/invoices' },
-  { label: 'Inventory', icon: Package, href: '/inventory' },
-  { label: 'GST Reports', icon: TrendingUp, href: '/gst-reports' },
-  { label: 'Analytics', icon: TrendingUp, href: '/analytics' },
-  { label: 'Chatbot', icon: MessageSquare, href: '/chatbot' },
-  { label: 'Notifications', icon: Bell, href: '/notifications' },
-  { label: 'Settings', icon: Settings, href: '/settings' },
+const getNavItems = (t: any) => [
+  { label: t.sidebar.dashboard, icon: LayoutDashboard, href: '/dashboard' },
+  { label: t.sidebar.uploadInvoice, icon: FileUp, href: '/upload' },
+  { label: t.sidebar.invoices, icon: FileText, href: '/invoices' },
+  { label: t.sidebar.inventory, icon: Package, href: '/inventory' },
+  { label: t.sidebar.gstReports, icon: TrendingUp, href: '/gst-reports' },
+  { label: t.sidebar.analytics, icon: TrendingUp, href: '/analytics' },
+  { label: t.sidebar.chatbot, icon: MessageSquare, href: '/chatbot' },
+  { label: t.sidebar.notifications, icon: Bell, href: '/notifications' },
+  { label: t.sidebar.settings, icon: Settings, href: '/settings' },
 ];
 
 export function Sidebar() {
@@ -37,6 +38,8 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useUser();
+  const { t } = useLanguage();
+  const navItems = getNavItems(t);
 
   const displayName = user?.full_name || user?.email?.split('@')[0] || 'User';
   const displayEmail = user?.email || '';
@@ -147,7 +150,7 @@ export function Sidebar() {
                 className="w-full flex items-center gap-3 px-4 py-3 text-sidebar-foreground hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 hover:text-primary rounded-lg transition-all duration-300"
               >
                 <LogOut className="w-5 h-5" />
-                {!collapsed && <span className="text-sm font-medium">Logout</span>}
+                {!collapsed && <span className="text-sm font-medium">{t.sidebar.logout}</span>}
               </button>
             </div>
         </div>

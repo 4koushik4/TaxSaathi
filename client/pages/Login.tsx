@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { supabase } from '@/lib/supabase';
 
 const loginSchema = z.object({
@@ -25,6 +26,7 @@ export default function Login() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { setUser } = useUser();
+  const { t } = useLanguage();
 
   const {
     register,
@@ -59,16 +61,16 @@ export default function Login() {
         }
 
         toast({
-          title: 'Welcome back!',
-          description: 'You have successfully logged in.',
+          title: t.login.welcomeBack,
+          description: t.login.loginSuccess,
         });
         navigate('/dashboard');
       }
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Login failed',
-        description: error?.message || 'Invalid email or password. Please try again.',
+        title: t.login.loginFailed,
+        description: error?.message || t.login.invalidCredentials,
       });
     } finally {
       setIsLoading(false);
@@ -93,10 +95,10 @@ export default function Login() {
             </div>
           </div>
           <CardTitle className="text-3xl font-bold text-foreground bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Tax Sathi
+            {t.login.title}
           </CardTitle>
           <CardDescription className="text-muted-foreground text-lg">
-            Secure tax management platform
+            {t.login.subtitle}
           </CardDescription>
         </CardHeader>
         
@@ -104,7 +106,7 @@ export default function Login() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                Email Address
+                {t.login.emailLabel}
               </Label>
               <div className="relative group">
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -112,7 +114,7 @@ export default function Login() {
                 </div>
                 <Input
                   id="email"
-                  placeholder="your@email.com"
+                  placeholder={t.login.emailPlaceholder}
                   type="email"
                   {...register('email')}
                   className="pl-10 pr-4 py-3 bg-card border-2 border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-foreground placeholder:text-muted-foreground/60"
@@ -128,7 +130,7 @@ export default function Login() {
             
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                Password
+                {t.login.passwordLabel}
               </Label>
               <div className="relative group">
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -170,14 +172,14 @@ export default function Login() {
                   className="w-4 h-4 text-primary bg-card border-2 border-border rounded focus:ring-primary focus:ring-offset-0 transition-colors cursor-pointer hover:border-primary"
                 />
                 <label htmlFor="remember" className="text-sm text-foreground font-medium cursor-pointer hover:text-primary transition-colors">
-                  Remember me
+                  {t.login.rememberMe}
                 </label>
               </div>
               <Link
                 to="/forgot-password"
                 className="text-sm font-medium text-primary hover:text-primary/80 transition-colors duration-300 hover:underline"
               >
-                Forgot password?
+                {t.login.forgotPassword}
               </Link>
             </div>
             
@@ -189,12 +191,12 @@ export default function Login() {
               {isLoading ? (
                 <div className="flex items-center justify-center gap-3">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Signing in...</span>
+                  <span>{t.login.signingIn}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-3">
                   <Shield className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                  <span>Sign In</span>
+                  <span>{t.login.signInButton}</span>
                 </div>
               )}
             </Button>
@@ -202,12 +204,12 @@ export default function Login() {
           
           <div className="mt-8 text-center">
             <p className="text-sm text-muted-foreground">
-              Don't have an account?{' '}
+              {t.login.noAccount}{' '}
               <Link
                 to="/register"
                 className="font-semibold text-primary hover:text-primary/80 transition-colors duration-300 hover:underline"
               >
-                Create one now
+                {t.login.createAccount}
               </Link>
             </p>
           </div>
@@ -215,7 +217,7 @@ export default function Login() {
           {/* Security badge */}
           <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground bg-card/50 border border-border rounded-lg p-3">
             <Shield className="w-3 h-3 text-primary" />
-            <span>Secure & Encrypted</span>
+            <span>{t.login.secureEncrypted}</span>
           </div>
         </CardContent>
       </Card>

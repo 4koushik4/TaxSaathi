@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '@/context/LanguageContext';
 
 // helper that calls OCR.space API for invoice text extraction
 async function runInvoiceOCR(file: File): Promise<{ invoice: InvoiceData; lineItems: any[]; ocrConfidence: number; extractedText: string }> {
@@ -83,6 +84,7 @@ interface UploadedFile {
 export default function InvoiceUpload() {
   const { user, loading: userLoading } = useUser();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'sales' | 'purchase'>('sales');
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -134,8 +136,8 @@ export default function InvoiceUpload() {
       } catch (err) {
         console.error('OCR error', err);
         toast({
-          title: 'OCR failed',
-          description: err instanceof Error ? err.message : 'Failed to extract invoice data',
+          title: t.invoiceUpload.ocrFailed || 'OCR failed',
+          description: err instanceof Error ? err.message : (t.invoiceUpload.ocrFailedDesc || 'Failed to extract invoice data'),
           variant: 'destructive',
         });
         setUploadedFiles((prev) =>
@@ -284,8 +286,8 @@ export default function InvoiceUpload() {
         }
 
         toast({
-          title: 'Success',
-          description: `Invoice ${file.extractedData.invoiceNumber} saved and GST recorded!`,
+          title: t.common.success,
+          description: t.invoiceUpload.invoiceSaved,
         });
 
         // Remove from UI
@@ -294,8 +296,8 @@ export default function InvoiceUpload() {
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'Failed to save invoice',
+        title: t.common.error,
+        description: error?.message || t.invoiceUpload.saveFailed,
       });
     }
   };
@@ -310,17 +312,17 @@ export default function InvoiceUpload() {
     <div className="p-4 md:p-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Invoice Upload</h1>
+        <h1 className="text-3xl font-bold text-foreground">{t.invoiceUpload.title}</h1>
         <p className="text-muted-foreground mt-2">
-          Upload invoices and let our AI extract and validate the data automatically.
+          {t.invoiceUpload.subtitle}
         </p>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'sales' | 'purchase')}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="sales">Sales Invoice</TabsTrigger>
-          <TabsTrigger value="purchase">Purchase Invoice</TabsTrigger>
+          <TabsTrigger value="sales">{t.invoiceUpload.salesInvoice}</TabsTrigger>
+          <TabsTrigger value="purchase">{t.invoiceUpload.purchaseInvoice}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sales" className="space-y-6">
@@ -348,11 +350,12 @@ function UploadSection({
   handleDrop: (e: React.DragEvent) => void;
   handleFileInput: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
+  const { t } = useLanguage();
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Upload Invoices</CardTitle>
-        <CardDescription>Drag & drop images or click to select</CardDescription>
+        <CardTitle>{t.invoiceUpload.uploadInvoices}</CardTitle>
+        <CardDescription>{t.invoiceUpload.dragAndDrop}</CardDescription>
       </CardHeader>
       <CardContent>
         <div
@@ -365,8 +368,8 @@ function UploadSection({
           }`}
         >
           <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">Drop invoices here</h3>
-          <p className="text-muted-foreground text-sm mb-4">or click to select files</p>
+          <h3 className="text-lg font-semibold text-foreground mb-2">{t.invoiceUpload.dropHere}</h3>
+          <p className="text-muted-foreground text-sm mb-4">{t.invoiceUpload.orClickToSelect}</p>
           <div className="flex gap-3 justify-center">
             <label>
               <input
@@ -377,16 +380,16 @@ function UploadSection({
                 className="hidden"
               />
               <Button asChild variant="default">
-                <span>Select Files</span>
+                <span>{t.invoiceUpload.selectFiles}</span>
               </Button>
             </label>
             <Button variant="outline">
               <Camera className="w-4 h-4 mr-2" />
-              Capture Photo
+              {t.invoiceUpload.capturePhoto}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-4">
-            Supports JPG, PNG, and PDF • Max 5MB per file
+            {t.invoiceUpload.supportedFormats}
           </p>
         </div>
       </CardContent>
@@ -407,20 +410,21 @@ function FilesList({
   onSave: (fileId: string) => void;
   onRemove: (fileId: string) => void;
 }) {
+  const { t } = useLanguage();
   if (files.length === 0) {
     return null;
   }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-foreground">Processed Invoices</h2>
+      <h2 className="text-lg font-semibold text-foreground">{t.invoiceUpload.processedInvoices}</h2>
       {files.map((file) => (
         <Card key={file.id}>
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Image Preview */}
               <div>
-                <p className="text-sm font-medium text-foreground mb-3">Preview</p>
+                <p className="text-sm font-medium text-foreground mb-3">{t.invoiceUpload.preview}</p>
                 {file.preview && (
                   <img
                     src={file.preview}
@@ -438,11 +442,11 @@ function FilesList({
               {/* Extracted Data */}
               <div className="md:col-span-2">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm font-medium text-foreground">Extracted Data</p>
-                  {file.processing && <span className="text-xs text-muted-foreground">Processing...</span>}
+                  <p className="text-sm font-medium text-foreground">{t.invoiceUpload.extractedData}</p>
+                  {file.processing && <span className="text-xs text-muted-foreground">{t.invoiceUpload.processing}</span>}
                   {!file.processing && file.ocrConfidence && (
                     <span className="text-xs font-medium text-success">
-                      OCR Confidence: {file.ocrConfidence}%
+                      {t.invoiceUpload.ocrConfidence} {file.ocrConfidence}%
                     </span>
                   )}
                 </div>
@@ -451,7 +455,7 @@ function FilesList({
                   <div className="space-y-3 max-h-[500px] overflow-y-auto">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-xs">Invoice Number</Label>
+                        <Label className="text-xs">{t.invoiceUpload.invoiceNumber}</Label>
                         <Input
                           value={file.extractedData.invoiceNumber}
                           onChange={(e) =>
@@ -462,7 +466,7 @@ function FilesList({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">Invoice Date</Label>
+                        <Label className="text-xs">{t.invoiceUpload.invoiceDate}</Label>
                         <Input
                           type="date"
                           value={file.extractedData.invoiceDate}
@@ -472,7 +476,7 @@ function FilesList({
                         />
                       </div>
                       <div className="col-span-2">
-                        <Label className="text-xs">Buyer GSTIN</Label>
+                        <Label className="text-xs">{t.invoiceUpload.buyerGstin}</Label>
                         <Input
                           value={file.extractedData.buyerGSTIN}
                           onChange={(e) => onDataChange(file.id, 'buyerGSTIN', e.target.value)}
@@ -481,7 +485,7 @@ function FilesList({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">Taxable Value</Label>
+                        <Label className="text-xs">{t.invoiceUpload.taxableValue}</Label>
                         <Input
                           type="number"
                           value={file.extractedData.taxableValue}
@@ -493,7 +497,7 @@ function FilesList({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">CGST</Label>
+                        <Label className="text-xs">{t.invoiceUpload.cgst}</Label>
                         <Input
                           type="number"
                           value={file.extractedData.cgst}
@@ -503,7 +507,7 @@ function FilesList({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">SGST</Label>
+                        <Label className="text-xs">{t.invoiceUpload.sgst}</Label>
                         <Input
                           type="number"
                           value={file.extractedData.sgst}
@@ -513,7 +517,7 @@ function FilesList({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">IGST</Label>
+                        <Label className="text-xs">{t.invoiceUpload.igst}</Label>
                         <Input
                           type="number"
                           value={file.extractedData.igst}
@@ -523,7 +527,7 @@ function FilesList({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">Total</Label>
+                        <Label className="text-xs">{t.invoiceUpload.total}</Label>
                         <Input
                           type="number"
                           value={file.extractedData.total}
@@ -537,16 +541,16 @@ function FilesList({
                     {/* Extracted Line Items */}
                     {file.lineItems && file.lineItems.length > 0 && (
                       <div className="mt-4 border rounded-lg p-3">
-                        <p className="text-sm font-medium mb-2">Extracted Line Items ({file.lineItems.length})</p>
+                        <p className="text-sm font-medium mb-2">{t.invoiceUpload.extractedLineItems} ({file.lineItems.length})</p>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
                           {file.lineItems.map((item: any, idx: number) => (
                             <div key={idx} className="flex items-center justify-between text-sm bg-muted/50 rounded px-3 py-2">
                               <div className="flex-1">
                                 <span className="font-medium">{item.product_name}</span>
-                                {item.hsn_code && <span className="text-xs text-muted-foreground ml-2">HSN: {item.hsn_code}</span>}
+                                {item.hsn_code && <span className="text-xs text-muted-foreground ml-2">{t.invoiceUpload.hsn || 'HSN'}: {item.hsn_code}</span>}
                               </div>
                               <div className="flex gap-4 text-muted-foreground">
-                                <span>Qty: {item.quantity}</span>
+                                <span>{t.invoiceUpload.qty || 'Qty'}: {item.quantity}</span>
                                 <span>₹{item.unit_price}</span>
                                 <span className="font-medium text-foreground">₹{(item.quantity * item.unit_price).toFixed(2)}</span>
                               </div>
@@ -577,9 +581,9 @@ function FilesList({
                           <XCircle className="h-4 w-4 text-destructive" />
                         )}
                         <AlertDescription>
-                          {file.validationStatus === 'valid' && 'Tax calculation is valid'}
-                          {file.validationStatus === 'warning' && 'Tax mismatch detected. Please verify.'}
-                          {file.validationStatus === 'error' && 'Invalid GSTIN or tax calculation error'}
+                          {file.validationStatus === 'valid' && t.invoiceUpload.taxValid}
+                          {file.validationStatus === 'warning' && t.invoiceUpload.taxMismatch}
+                          {file.validationStatus === 'error' && t.invoiceUpload.invalidGstin}
                         </AlertDescription>
                       </Alert>
                     )}
@@ -594,17 +598,17 @@ function FilesList({
                       onClick={() => onValidate(file.id)}
                       variant="outline"
                     >
-                      Validate
+                      {t.invoiceUpload.validate}
                     </Button>
                     <Button  onClick={() => onSave(file.id)}>
-                      Save Invoice
+                      {t.invoiceUpload.saveInvoice}
                     </Button>
                     <Button
                       
                       variant="ghost"
                       onClick={() => onRemove(file.id)}
                     >
-                      Discard
+                      {t.invoiceUpload.discard}
                     </Button>
                   </div>
                 )}

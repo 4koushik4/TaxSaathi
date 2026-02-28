@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, User, Mail, Lock, Building2, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/context/LanguageContext';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -31,6 +32,7 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const {
     register,
@@ -59,8 +61,8 @@ export default function Register() {
     if (error) throw error;
 
     toast({
-      title: "Account created successfully!",
-      description: "Please check your email to confirm your account.",
+      title: t.register.accountCreated,
+      description: t.register.checkEmail,
     });
 
     navigate("/login");
@@ -69,7 +71,7 @@ export default function Register() {
 
     toast({
       variant: "destructive",
-      title: "Registration failed",
+      title: t.register.registrationFailed,
       description: error?.message || "Something went wrong.",
     });
   } finally {
@@ -95,10 +97,10 @@ export default function Register() {
             </div>
           </div>
           <CardTitle className="text-3xl font-bold text-foreground bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Join Tax Sathi
+            {t.register.title}
           </CardTitle>
           <CardDescription className="text-muted-foreground text-lg">
-            Create your account to start managing your taxes effortlessly
+            {t.register.subtitle}
           </CardDescription>
         </CardHeader>
         
@@ -108,7 +110,7 @@ export default function Register() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-sm font-medium text-foreground">
-                  Full Name
+                  {t.register.fullName}
                 </Label>
                 <div className="relative group">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -116,7 +118,7 @@ export default function Register() {
                   </div>
                   <Input
                     id="name"
-                    placeholder="Enter your full name"
+                    placeholder={t.register.fullNamePlaceholder}
                     {...register('name')}
                     className="pl-10 pr-4 py-3 bg-card border-2 border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-foreground placeholder:text-muted-foreground/60"
                   />
@@ -131,7 +133,7 @@ export default function Register() {
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                  Email Address
+                  {t.register.emailLabel}
                 </Label>
                 <div className="relative group">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -158,7 +160,7 @@ export default function Register() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="businessName" className="text-sm font-medium text-foreground">
-                  Business Name
+                  {t.register.businessName}
                 </Label>
                 <div className="relative group">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -166,7 +168,7 @@ export default function Register() {
                   </div>
                   <Input
                     id="businessName"
-                    placeholder="Your business name"
+                    placeholder={t.register.businessNamePlaceholder}
                     {...register('businessName')}
                     className="pl-10 pr-4 py-3 bg-card border-2 border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-foreground placeholder:text-muted-foreground/60"
                   />
@@ -181,7 +183,7 @@ export default function Register() {
 
               <div className="space-y-2">
                 <Label htmlFor="gstin" className="text-sm font-medium text-foreground">
-                  GSTIN (Optional)
+                  {t.register.gstinLabel}
                 </Label>
                 <div className="relative group">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -189,12 +191,12 @@ export default function Register() {
                   </div>
                   <Input
                     id="gstin"
-                    placeholder="GSTIN number"
+                    placeholder={t.register.gstinPlaceholder}
                     {...register('gstin')}
                     className="pl-10 pr-4 py-3 bg-card border-2 border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-foreground placeholder:text-muted-foreground/60"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Optional: Add your GSTIN for automatic tax calculations</p>
+                <p className="text-xs text-muted-foreground">{t.register.gstinHelp}</p>
               </div>
             </div>
 
@@ -202,7 +204,7 @@ export default function Register() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                  Password
+                  {t.register.passwordLabel}
                 </Label>
                 <div className="relative group">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -211,7 +213,7 @@ export default function Register() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Create a strong password"
+                    placeholder={t.register.passwordPlaceholder}
                     {...register('password')}
                     className="pl-10 pr-12 py-3 bg-card border-2 border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-foreground placeholder:text-muted-foreground/60"
                   />
@@ -229,7 +231,7 @@ export default function Register() {
                   </button>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Password must be at least 8 characters
+                  {t.register.passwordHelp}
                 </div>
                 {errors.password && (
                   <p className="text-sm text-destructive flex items-center gap-1">
@@ -241,7 +243,7 @@ export default function Register() {
 
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
-                  Confirm Password
+                  {t.register.confirmPasswordLabel}
                 </Label>
                 <div className="relative group">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -250,7 +252,7 @@ export default function Register() {
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Confirm your password"
+                    placeholder={t.register.confirmPasswordPlaceholder}
                     {...register('confirmPassword')}
                     className="pl-10 pr-12 py-3 bg-card border-2 border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-foreground placeholder:text-muted-foreground/60"
                   />
@@ -305,12 +307,12 @@ export default function Register() {
                 {isLoading ? (
                   <div className="flex items-center justify-center gap-3">
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Creating account...</span>
+                    <span>{t.register.creatingAccount}</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-3">
                     <CheckCircle className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                    <span>Create Account</span>
+                    <span>{t.register.createAccountButton}</span>
                   </div>
                 )}
               </Button>
@@ -319,12 +321,12 @@ export default function Register() {
           
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
-              Already have an account?{' '}
+              {t.register.haveAccount}{' '}
               <Link
                 to="/login"
                 className="font-semibold text-primary hover:text-primary/80 transition-colors duration-300 hover:underline"
               >
-                Sign in here
+                {t.register.signInHere}
               </Link>
             </p>
           </div>
@@ -333,15 +335,15 @@ export default function Register() {
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center gap-3 p-3 bg-card/50 border border-border rounded-lg">
               <CheckCircle className="w-5 h-5 text-primary" />
-              <span className="text-sm text-foreground font-medium">Secure & Encrypted</span>
+              <span className="text-sm text-foreground font-medium">{t.login.secureEncrypted}</span>
             </div>
             <div className="flex items-center gap-3 p-3 bg-card/50 border border-border rounded-lg">
               <CheckCircle className="w-5 h-5 text-primary" />
-              <span className="text-sm text-foreground font-medium">GST Compliant</span>
+              <span className="text-sm text-foreground font-medium">{t.register.gstCompliant}</span>
             </div>
             <div className="flex items-center gap-3 p-3 bg-card/50 border border-border rounded-lg">
               <CheckCircle className="w-5 h-5 text-primary" />
-              <span className="text-sm text-foreground font-medium">24/7 Support</span>
+              <span className="text-sm text-foreground font-medium">{t.landing.support247}</span>
             </div>
           </div>
         </CardContent>
